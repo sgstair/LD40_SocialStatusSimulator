@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:LD40_sgstair"
         mc:Ignorable="d"
-        Title="MainWindow" Height="350" Width="525">
+        Title="Social Status Simulator 2017" Height="600" Width="800">
     <Grid>
         
     </Grid>

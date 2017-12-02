@@ -1,0 +1,107 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LD40_sgstair
+{
+    class EngineData
+    {
+        public static GameAction[] Actions = new GameAction[]
+        {
+            new GameAction {
+                Title = "Work on a small project", Description = "Make something small your fans will appreciate, that won't take too much time.",
+                MoneyCost = 50000, TimeCost = 45,
+                BenefitString = (Player, Action) => "Improve your popularity a bit.",
+                CommitAction = (Player, Action) =>
+                {
+                    Player.ImproveSentiment(0, 0.01, ref Player.ThisRound.PublicSentiment);
+                    Player.AddFans(0.005, 0.03, ref Player.ThisRound.FanCount);
+                }
+            },
+            new GameAction
+            {
+                Title = "Improve public sentiment", Description = "Work on some community projects that will improve people's perception of you.",
+                MoneyCost = 10000, TimeCost = 70,
+                CommitAction = (Player, Action) =>
+                {
+                    Player.ImproveSentiment(0.03, 0.12, ref Player.ThisRound.PublicSentiment);
+                }
+            }
+
+
+
+        };
+    }
+
+
+    class GameFormat
+    {
+        public static string FormatMoney(long moneyValue)
+        {
+            long printValue = moneyValue;
+            string suffix = "";
+
+            if (moneyValue > 15000000000L)
+            {
+                printValue = (long)Math.Round(moneyValue / 1000000000.0);
+                suffix = "B";
+            }
+            else if (moneyValue > 15000000)
+            {
+                printValue = (long)Math.Round(moneyValue / 1000000.0);
+                suffix = "M";
+            }
+            else if (moneyValue > 15000)
+            {
+                printValue = (long)Math.Round(moneyValue / 1000.0);
+                suffix = "k";
+            }
+            return string.Format("${0}{1}", printValue, suffix);
+        }
+        public static string FormatTime(int days)
+        {
+            return string.Format("{0} day{1}", days, days == 1 ? "" : "s");
+        }
+    }
+
+    class GameAction
+    {
+
+        public static bool CanUseBase(GamePlayer Player, GameAction Action)
+        {
+            return Player.ThisRound.Money >= Action.MoneyCost && Player.ThisRound.TimeRemaining > Action.TimeCost;
+        }
+
+        public static void DeductCost(GamePlayer Player, GameAction Action)
+        {
+            Player.ThisRound.Money -= Action.MoneyCost;
+            Player.ThisRound.TimeRemaining -= Action.TimeCost;
+        }
+        public static string DefaultCostString(GamePlayer Player, GameAction Action)
+        {
+            List<string> stringParts = new List<string>();
+            if (Action.MoneyCost > 0) { stringParts.Add(GameFormat.FormatMoney(Action.MoneyCost)); }
+            if (Action.TimeCost > 0) { stringParts.Add(GameFormat.FormatTime(Action.TimeCost)); }
+            if (stringParts.Count == 0) return "FREE!";
+            return string.Join(", ", stringParts);
+        }
+
+
+
+        public string Title;
+        public string Description;
+
+        public long MoneyCost;
+        public int TimeCost;
+
+        public Func<GamePlayer, GameAction, string> CostString = DefaultCostString;
+        public Func<GamePlayer, GameAction, string> RiskString;
+        public Func<GamePlayer, GameAction, string> BenefitString;
+
+        // Determine if the action can be used
+        public Func<GamePlayer, GameAction, bool> CanUseAction = CanUseBase;
+        public Action<GamePlayer, GameAction> CommitAction = DeductCost;
+    }
+}
