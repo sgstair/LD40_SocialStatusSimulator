@@ -64,6 +64,37 @@ namespace LD40_sgstair
         {
             return string.Format("{0} day{1}", days, days == 1 ? "" : "s");
         }
+        public static string FormatPercent(double percent)
+        {
+            if(Math.Abs(percent)> 0.08)
+            {
+                return string.Format("{0}%", Math.Round(percent * 100));
+            }
+            else
+            {
+                int percentpart = (int)Math.Round(percent * 100 * 100);
+                if (percentpart == 0) return "0%";
+                return string.Format("{0:n2}%", percentpart / 100.0);
+            }
+        }
+
+        public static string FormatFans(long fans)
+        {
+            if (fans == 1) return "1 fan";
+            string suffix = "";
+            // There are only 10 billion fans in the simulated world.
+            if(fans > 15000000)
+            {
+                suffix = " million";
+                fans = (long)Math.Round(fans / 1000000.0);
+            }
+            else if(fans > 15000)
+            {
+                suffix = " thousand";
+                fans = (long)Math.Round(fans / 1000.0);
+            }
+            return string.Format("{0}{1} fans", fans, suffix);
+        }
     }
 
     class GameAction

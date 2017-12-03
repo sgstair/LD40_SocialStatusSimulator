@@ -23,6 +23,41 @@ namespace LD40_sgstair
         public MainWindow()
         {
             InitializeComponent();
+            StartGame();
+
+            Closing += MainWindow_Closing;
+            RestoreWindowPosition();
+        }
+
+        private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            SaveWindowPosition();
+        }
+
+        void SaveWindowPosition()
+        {
+            Properties.Settings.Default.WindowX = Left.ToString();
+            Properties.Settings.Default.WindowY = Top.ToString();
+
+            Properties.Settings.Default.Save();
+        }
+        void RestoreWindowPosition()
+        {
+            int x, y;
+            if (int.TryParse(Properties.Settings.Default.WindowX, out x))
+            {
+                if (int.TryParse(Properties.Settings.Default.WindowY, out y))
+                {
+                    Left = x;
+                    Top = y;
+                }
+            }
+        }
+
+        public void StartGame()
+        {
+            GameUI.StartNewGame();
+            GameUI.Visibility = Visibility.Visible;
         }
     }
 }

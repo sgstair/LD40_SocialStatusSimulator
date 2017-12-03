@@ -48,6 +48,9 @@ namespace LD40_sgstair
                 GamePlayer cpu = new GamePlayer(this, i.ToString(), false);
                 Players.Add(cpu);
 
+                cpu.BaseAge = 20 + r.NextDouble() * 40;
+                cpu.LifeExpectancy = 50 + r.NextDouble() * 40;
+
                 cpu.Values.Money = 100000 * i + r.Next(0, 10000000);
                 cpu.Values.FanCount = 10000 * i + r.Next(0, 100000);
                 cpu.Values.PublicSentiment = r.Next(-0x5000, 0x5000);
@@ -59,6 +62,12 @@ namespace LD40_sgstair
 
             return human;
         }
+
+        void AddCpuPlayer()
+        {
+            // future, when we get to replacing dead cpu players.
+        }
+
 
         public void BeginGame()
         {
@@ -152,9 +161,9 @@ namespace LD40_sgstair
         public string Name;
         public bool Human;
 
-        public int Age {  get { return Parent.Year + BaseAge; } }
-        public int BaseAge = 25;
-        public int LifeExpectancy = 70;
+        public double Age {  get { return Parent.Year + BaseAge + (Parent.Quarter-1) * 0.25; } }
+        public double BaseAge = 25;
+        public double LifeExpectancy = 70;
         public bool Dead = false;
 
         public PlayerValues Values = new PlayerValues(); // Master value list for player
@@ -174,8 +183,8 @@ namespace LD40_sgstair
 
         public void BeginRound()
         {
-            ThisRound = (PlayerValues)Values.Clone();
             Values.TimeRemaining = 90; // 90 days per quarter, roughly
+            ThisRound = (PlayerValues)Values.Clone();
 
             // Public perception wanders a bit
             ImproveSentiment(-0.01, 0.01, ref ThisRound.PublicSentiment);

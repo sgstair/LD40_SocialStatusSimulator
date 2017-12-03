@@ -5,8 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:LD40_sgstair"
         mc:Ignorable="d"
-        Title="Social Status Simulator 2017" Height="600" Width="800">
+        Title="Social Status Simulator 2017" Height="768" Width="1024">
+    <Window.Background>
+        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+            <GradientStop Color="Black" Offset="0"/>
+            <GradientStop Color="DarkGoldenrod" Offset="1"/>
+        </LinearGradientBrush>
+    </Window.Background>
     <Grid>
-        
+        <local:GameUI x:Name="GameUI" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
     </Grid>
 </Window>
