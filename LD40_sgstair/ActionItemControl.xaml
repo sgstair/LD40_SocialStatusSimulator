@@ -9,13 +9,13 @@
     <Grid Height="90">
         <Rectangle x:Name="RectBackground" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Margin="5" Fill="#99FFFFFF" RadiusX="15" RadiusY="15"/>
         <Label x:Name="LabelHeader" Content="Heading text" FontSize="18" Margin="15,5,0,0"/>
-        <Label x:Name="LabelDescription" Content="Description text" Margin="25,30,0,0"/>
+        <Label x:Name="LabelDescription" Content="Description text" FontSize="14" Margin="25,30,0,0"/>
         <WrapPanel Margin="25,55,0,0">
-            <Label x:Name="LabelCost" Content="Cost: Things" Foreground="DarkBlue" FontWeight="Bold"/>
+            <Label x:Name="LabelCost" Content="Cost: Things" Foreground="DarkBlue" FontSize="14" FontWeight="Bold"/>
             <Separator Width="15"/>
-            <Label x:Name="LabelRisk" Content="Risk: Things" Foreground="DarkRed" FontWeight="Bold"/>
+            <Label x:Name="LabelRisk" Content="Risk: Things" Foreground="DarkRed" FontSize="14" FontWeight="Bold"/>
             <Separator Width="15"/>
-            <Label x:Name="LabelBenefit" Content="Benefit: Things" Foreground="DarkGreen" FontWeight="Bold"/>
+            <Label x:Name="LabelBenefit" Content="Benefit: Things" Foreground="DarkGreen" FontSize="14" FontWeight="Bold"/>
 
         </WrapPanel>
 

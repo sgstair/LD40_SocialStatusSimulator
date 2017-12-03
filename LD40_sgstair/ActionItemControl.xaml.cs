@@ -28,7 +28,10 @@ namespace LD40_sgstair
             MouseLeave += ActionItemControl_MouseLeave;
         }
         Brush defaultBrush = new SolidColorBrush(Color.FromArgb(0x99, 255, 255, 255));
+        Brush cancelBrush = new SolidColorBrush(Color.FromArgb(0x99, 255, 208, 218));
         Brush clickBrush = new SolidColorBrush(Color.FromArgb(0xDD, 230, 255, 230));
+
+        Brush baseBrush;
 
         internal RoundAction Action;
         internal void BindAction(RoundAction possibleAction)
@@ -41,6 +44,9 @@ namespace LD40_sgstair
             LabelCost.Content = Action.CostString == null ? "" : "Cost: " + Action.CostString;
             LabelRisk.Content = Action.RiskString == null ? "" : "Risk: " + Action.RiskString;
             LabelBenefit.Content = Action.BenefitString == null ? "" : "Benefit: " + Action.BenefitString;
+
+            baseBrush = Action.Action.CancelTaskFor == null ? defaultBrush : cancelBrush;
+            UpdateBackground();
         }
 
         internal event Action<RoundAction> ActionClicked;
@@ -73,7 +79,7 @@ namespace LD40_sgstair
 
         void UpdateBackground()
         {
-            RectBackground.Fill = clicking ? clickBrush : defaultBrush;
+            RectBackground.Fill = clicking ? clickBrush : baseBrush;
         }
     }
 }

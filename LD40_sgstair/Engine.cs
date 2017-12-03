@@ -24,6 +24,7 @@ namespace LD40_sgstair
 
         public List<GamePlayer> Players = new List<GamePlayer>();
         public Dictionary<GamePlayer, List<MediaEvent>> RoundNews = new Dictionary<GamePlayer, List<MediaEvent>>();
+        public List<MediaEvent> ThisRoundNews = new List<MediaEvent>();
         public List<MediaEvent> NextRoundNews = new List<MediaEvent>();
 
 
@@ -34,14 +35,16 @@ namespace LD40_sgstair
         public int CurrentYear {  get { return YearBase + Year; } }
 
 
-        public GamePlayer PrepareSinglePlayerGame()
+        public GamePlayer PrepareSinglePlayerGame(string name = "human")
         {
-            GamePlayer human = new GamePlayer(this, "human", true);
+            GamePlayer human = new GamePlayer(this, name, true);
             Players.Add(human);
 
             // Initial values for human.
             human.Values.Money = 1000000;
-            human.Values.FanCount = 50000; // 50k fans
+            // Debug:
+            human.Values.Money = 100000000;
+            human.Values.FanCount = 100000; // 100k fans
             human.Values.PublicSentiment = 0; // Neutral public sentiment
             human.Values.AffinityProfessional = 0; // Neutral affinities
             human.Values.AffinityMedia = 0; 
@@ -65,12 +68,33 @@ namespace LD40_sgstair
                 cpu.Values.AffinityCriminal = r.Next(0, 0x5000);
             }
 
+            // Queue some intro news for the human.
+            MediaEvent me = new MediaEvent(human, "New star strikes out into the spotlight!", $"After {name}'s smash success last week, everyone is talking about it...", null, false);
+            NextRoundNews.Add(me);
+
             return human;
         }
 
+        int playerIndex = 500;
+
         void AddCpuPlayer()
         {
-            // future, when we get to replacing dead cpu players.
+            GamePlayer cpu = new GamePlayer(this, (playerIndex++).ToString(), false);
+            Players.Add(cpu);
+
+            long maxFans = Players[49].Values.FanCount;
+            long maxMoney = 20000000;
+
+            cpu.BaseAge = 20 + r.NextDouble() * 40;
+            cpu.LifeExpectancy = 50 + r.NextDouble() * 40;
+
+            cpu.Values.Money = (long)Math.Round(maxMoney * r.NextDouble());
+            cpu.Values.FanCount = (long)Math.Round(maxFans * r.NextDouble());
+            cpu.Values.PublicSentiment = r.Next(-0x5000, 0x5000);
+            cpu.Values.AffinityProfessional = r.Next(0, 0x5000);
+            cpu.Values.AffinityMedia = r.Next(0, 0x5000);
+            cpu.Values.AffinitySocial = r.Next(0, 0x5000);
+            cpu.Values.AffinityCriminal = r.Next(0, 0x5000);
         }
 
 
@@ -86,6 +110,12 @@ namespace LD40_sgstair
             {
                 Players[i].Values.Rank = i + 1;
             }
+            // remove players who are dead and rank below the top 50
+            Players.RemoveAll((p) => p.Dead && p.Values.Rank > 50 && p.Human == false);
+
+            // Add players to get back to the 501 mark
+            while (Players.Count < 501)
+                AddCpuPlayer();
 
             // Prepare players for this round
             foreach (GamePlayer p in Players)
@@ -101,7 +131,8 @@ namespace LD40_sgstair
                 AddNews(e.AffectedPlayer, e);
                 AddNews(e.InstigatingPlayer, e);
             }
-            NextRoundNews.Clear();
+            ThisRoundNews = NextRoundNews;
+            NextRoundNews = new List<MediaEvent>();
 
         }
 
@@ -146,7 +177,7 @@ namespace LD40_sgstair
             {
                 if(p.Age > p.LifeExpectancy)
                 {
-                    p.Dead = true;
+                    p.Kill("{0}died of natural causes", "{0} Lived to the old age of {1}");
                 }
             }
         }
@@ -191,6 +222,13 @@ namespace LD40_sgstair
         public int AffinityCriminal;
     }
 
+    class PartialProject
+    {
+        public GameAction Project;
+        public int QuartersRemaining;
+        public bool JailTime;
+    }
+
     class GamePlayer
     {
         public Engine Parent;
@@ -201,11 +239,18 @@ namespace LD40_sgstair
         public double Age {  get { return Parent.Year + BaseAge + (Parent.Quarter-1) * 0.25; } }
         public double BaseAge = 25;
         public double LifeExpectancy = 70;
+        public int FinalAge = 0;
         public bool Dead = false;
+        public bool InJail = false;
+
+        public string DeadHowDied = "not dead";
+        public string DeadContext = "really not dead";
 
         public PlayerValues Values = new PlayerValues(); // Master value list for player
         public PlayerValues ThisRound; // Accumulated values as player takes actions, but not fully applied yet.
         public PlayerValues LastRound;
+
+        public List<PartialProject> PartialProjects = new List<PartialProject>();
 
         public GamePlayer(Engine parentEngine, string playerName, bool playerHuman = false)
         {
@@ -213,8 +258,6 @@ namespace LD40_sgstair
             Name = playerName;
             Human = playerHuman;
         }
-
-        List<RoundAction> RoundActions = new List<RoundAction>();
 
 
         public override string ToString()
@@ -225,27 +268,84 @@ namespace LD40_sgstair
 
         public void BeginRound()
         {
-            Values.TimeRemaining = 90; // 90 days per quarter, roughly
-            if(LastRound == null) LastRound = (PlayerValues)Values.Clone(); // First round only.
-            ThisRound = (PlayerValues)Values.Clone();
+            if (LastRound == null)
+            {
+                LastRound = (PlayerValues)Values.Clone(); // First round only, as these aren't prepared
+                ThisRound = (PlayerValues)Values.Clone();
+            }
+            ThisRound.TimeRemaining = 90; // 90 days per quarter, roughly
+            
 
             // Public perception wanders a bit
             ImproveSentiment(-0.01, 0.01, ref ThisRound.PublicSentiment);
 
             // Add fans based on public perception and existing fanbase
             double sentimentPercent = 0.05 * AffinityAsPercent(ThisRound.PublicSentiment);
-            AddFans(sentimentPercent, sentimentPercent + 0.02, ref ThisRound.FanCount);
+            AddFans(sentimentPercent, sentimentPercent + 0.04, ref ThisRound.FanCount);
 
             // Make some money based on the size of the fanbase.
-            double moneyPerFan = Parent.NextPercent(0.03, 0.18);
+            double moneyPerFan = Parent.NextPercent(0.08, 0.28);
             long addMoney = (long)Math.Round(ThisRound.FanCount * moneyPerFan);
             ThisRound.Money += addMoney;
+
+            // Add some decay to the number of fans
+            double decayRate = 0.01;
+            if (Dead) decayRate = 0.04;
+            long lostFans = (long)Math.Round(ThisRound.FanCount * decayRate);
+            ThisRound.FanCount -= lostFans;
+
+            // If dead, decay sentiment
+            if(Dead)
+            {
+                ThisRound.PublicSentiment = (int)Math.Round(ThisRound.PublicSentiment * 0.95);
+            }
+
+            // Deduct time for partial projects that are in progress.
+            foreach(PartialProject p in PartialProjects)
+            {
+                if (p.Project != null)
+                {
+                    int days = p.Project.TimeCost;
+                    ThisRound.TimeRemaining -= days;
+                }
+            }
         }
 
         public void CompleteRound()
         {
-            LastRound = (PlayerValues)Values.Clone();
-            Values = (PlayerValues)ThisRound.Clone();
+            // Update tracking values
+            LastRound = (PlayerValues)Values.Clone(); // LastRound = Values at the start of the previous round
+            Values = (PlayerValues)ThisRound.Clone(); // Values = Values at the start of the current round. (only true during the round)
+
+            // Future: track peak money, fans
+
+
+            // Future: Update life expectancy based on stress.
+
+
+            // Prepare for next round - Do this here, so we capture the partial project completion in the changes for next quarter.
+            ThisRound = (PlayerValues)Values.Clone();
+
+            // Complete partial projects that are done.
+            foreach (PartialProject p in PartialProjects)
+            {
+                p.QuartersRemaining--;
+                if(p.QuartersRemaining == 0)
+                {
+                    // Complete the project
+                    if (p.JailTime)
+                    {
+                        // Get out of jail!
+                        InJail = false;
+                    }
+                    else
+                    {
+                        p.Project.FinalCompletion(this, p.Project, null);
+                    }
+                }
+            }
+            PartialProjects.RemoveAll((p) => p.QuartersRemaining == 0);
+
         }
 
 
@@ -254,10 +354,55 @@ namespace LD40_sgstair
             List<RoundAction> actions = new List<RoundAction>();
             if (Dead) return actions;
 
-            for(int i=0;i<EngineData.Actions.Length;i++)
+            // Add cancel actions for any partial projects. Number these options as -1, -2, -3... for tracking.
+            int index = 1;
+            foreach(PartialProject p in PartialProjects)
+            {
+                if (p.JailTime)
+                {
+                    string action_s = p.QuartersRemaining == 1 ? "" : "s";
+                    GameAction cancelAction = new GameAction()
+                    {
+                        Title = $"In Jail",
+                        Description = $"You're stuck here for another {p.QuartersRemaining} Quarter{action_s}",
+                        CostString = (Player, Action) => null,
+                        CommitAction = (Player, Action, Media) => { }
+                    };
+                    actions.Add(new RoundAction(this, cancelAction, -index));
+                    return actions; // There can be no other actions in jail.
+                }
+                else
+                {
+                    string action_s = p.QuartersRemaining == 1 ? "" : "s";
+                    string remaining = $"{p.QuartersRemaining} Quarter{action_s} remaining. ";
+                    if (p.QuartersRemaining == 1)
+                    {
+                        remaining = "Completes this quarter. ";
+                    }
+                    GameAction cancelAction = new GameAction()
+                    {
+                        Title = $"Cancel '{p.Project.Title}'",
+                        Description = remaining + "Recover your time but lose all investment.",
+                        TimeCost = -p.Project.TimeCost,
+                        CancelTaskFor = p,
+                        CostString = (Player, Action) => null,
+                        BenefitString = (Player, Action) => $"Recover {GameFormat.FormatTime(p.Project.TimeCost)}",
+                        CommitAction = (Player, Action, Media) =>
+                        {
+                            GameAction.DeductCost(Player, Action, Media); // Adds back the time because of TimeCost field manipulation above
+                                                                          // Also remove this project from the partial project list
+                        Player.PartialProjects.Remove(Action.CancelTaskFor);
+                        }
+                    };
+                    actions.Add(new RoundAction(this, cancelAction, -index));
+                }
+                index++;
+            }
+
+            for (int i=0;i<EngineData.Actions.Length;i++)
             {
                 GameAction a = EngineData.Actions[i];
-                if(a.CanUseAction(this,a))
+                if(a.CanUseAction(this,a, null))
                 {
                     actions.Add(new RoundAction(this, a, i));
                 }
@@ -267,15 +412,43 @@ namespace LD40_sgstair
 
         public void CommitAction(RoundAction a)
         {
-            a.Action.CommitAction(this, a.Action);
-            RoundActions.Add(a);
+            if (InJail || Dead) return;
+
+            a.Action.CommitAction(this, a.Action, a.Media);
+            if (a.Action.NumQuarters > 1)
+            {
+                PartialProject p = new PartialProject() { Project = a.Action, QuartersRemaining = a.Action.NumQuarters };
+                PartialProjects.Add(p);
+            }
         }
+
+        public List<RoundAction> MediaActions(MediaEvent e, int mediaIndex)
+        {
+            List<RoundAction> actions = new List<RoundAction>();
+            if (Dead) return actions;
+
+            return actions;
+        }
+
+        /// <summary>
+        /// Kill("{0}died of natural causes", "{0} Lived to the old age of {1}");
+        /// </summary>
+        public void Kill(string howDied, string context="")
+        {
+            FinalAge = (int)Math.Floor(Age);
+            Dead = true;
+            DeadHowDied = string.Format(howDied, Name, FinalAge);
+            DeadContext = string.Format(context, Name, FinalAge);
+        }
+
 
 
         // AI
 
         public void PlayAI()
         {
+            if(Dead || InJail) return;
+
             while(true)
             {
                 if (Parent.PercentChance(0.05)) return; // 1 in 20 chance to just stop here.
@@ -291,13 +464,14 @@ namespace LD40_sgstair
         }
 
         // News
-        public void QueueNews(string blurb, string subBlurb, string outcome, bool highlight = false)
+        public void QueueNews(string blurb, string subBlurb, string outcome, bool highlight = false, MediaEventType eventType = MediaEventType.Mundane)
         {
             MediaEvent me = new MediaEvent(this, blurb, subBlurb, outcome, highlight);
+            me.EventType = eventType;
             Parent.NextRoundNews.Add(me);
         }
 
-        public void QueueNews(string newsConcentrate, string outcome = null, bool highlight = false)
+        public void QueueNews(string newsConcentrate, string outcome = null, bool highlight = false, MediaEventType eventType = MediaEventType.Mundane)
         {
             string formattedReason = string.Format(newsConcentrate, this.Name);
             string[] parts = formattedReason.Split('\n');
@@ -342,10 +516,34 @@ namespace LD40_sgstair
             string outcome = string.Format("You were fined {0}", GameFormat.FormatMoney(fineAmount));
             ThisRound.Money -= fineAmount;
 
-            QueueNews(fineReason, outcome, true);
+            QueueNews(fineReason, outcome, true, MediaEventType.Criminal);
         }
 
+        public void GoToJail(int Quarters)
+        {
+            // Cancel all ongoing projects
+            PartialProjects.Clear();
 
+            // Penalty to affinities and fans (Criminal affinity not affected.)
+            ThisRound.AffinityProfessional /= 3;
+            ThisRound.AffinitySocial /= 3;
+            ThisRound.AffinityMedia /= 3;
+
+            if (ThisRound.PublicSentiment > 0)
+                ThisRound.PublicSentiment /= 3;
+
+            ThisRound.FanCount /= 2;
+
+            // Create jail partial project
+            PartialProject p = new PartialProject();
+            p.QuartersRemaining = Quarters;
+            p.JailTime = true;
+
+            InJail = true;
+
+            PartialProjects.Add(p);
+
+        }
         public bool DidEvadeCriminalRisk(double percentRisk)
         {
             double outcome = Parent.NextPercent(0, 1);
@@ -356,7 +554,7 @@ namespace LD40_sgstair
 
                 string Reason = CriminalHeadlines[Parent.RandomNext(0, CriminalHeadlines.Length)];
 
-                if( percentRisk <= 0.5 )
+                if( percentRisk <= 0.05 )
                 {
                     // Outcome: Fined. Fines in this range are pretty negligible, and generally < $10k
                     int baseFine = (int)Math.Round(percentRisk * 100 * 1000);
@@ -372,7 +570,8 @@ namespace LD40_sgstair
                         int maxJailTerm = (int)Math.Round(percentRisk * 1000); // 15% chance = 150 quarters max sentence (~38 years)
                         int jailTerm = (int)Math.Round(outcome * maxJailTerm / (percentRisk / 5));
 
-                        // Todo: figure this part out.
+                        GoToJail(jailTerm);
+                        // Todo: consider bail mechanic.
                     }
                     else
                     {
@@ -392,6 +591,74 @@ namespace LD40_sgstair
         public void SetCriminalHeadlines(params string[] Reasons)
         {
             CriminalHeadlines = Reasons;
+        }
+
+        public GamePlayer SelectRandomTarget()
+        {
+            // Only select targets that aren't in jail or dead
+            for (int i = 0; i < 20; i++)
+            {
+                GamePlayer selected;
+                if (ThisRound.Rank > 1)
+                {
+                    int pickIndex = Parent.RandomNext(1, ThisRound.Rank) - 1;
+                    selected = Parent.Players[pickIndex];
+                }
+                else
+                {
+                    int pickIndex = Parent.RandomNext(1, 50);
+                    selected = Parent.Players[pickIndex];
+                }
+                if (!(selected.Dead || selected.InJail)) return selected;
+            }
+            // If we can't find one, just find the first player that isn't us that isn't dead or in jail.
+            foreach(GamePlayer p in Parent.Players)
+            {
+                if (p.Dead || p.InJail || p == this) continue;
+                return p;
+            }
+            return null; // This should never happen.
+        }
+
+        public void AttemptAssasination(double risk, GamePlayer specificTarget = null)
+        {
+            string[] failedOutcomes = new string[] {
+                "Police nab would-be Assassin\nThe plot was ultimately traced back to {0}, the prosecuting attorney is hoping for a serious penalty in this case"
+            };
+
+            if(specificTarget == null)
+            {
+                specificTarget = SelectRandomTarget();
+            }
+
+            SetCriminalHeadlines(failedOutcomes);
+            if(DidEvadeCriminalRisk(risk))
+            {
+                // Success! Kill the target!
+                specificTarget.Kill("{0} was assasinated by " + Name + " at the age of {1}", "...But nobody ever knew. It was covered up very well");
+
+                // Add "Mysterious death" news
+                QueueNews($"Mysterious death of {specificTarget.Name}\nAuthorities say there are no signs of foul play, for this unusual death");
+            }
+            else
+            {
+                string[] failedAttempts = new string[]
+                {
+                    "The police informed {0} they captured an assassin on their property\nApparently the would-be murderer fell victim to a number of aggressive dogs in the area",
+                    "Local bar-goer narrowly evaded death\n{0} noticed his drink was a very unusual color, a toxicologist who happened to be at the bar identified the poison by scent and alerted the police"
+                };
+
+                string failure = failedAttempts[Parent.RandomNext(0, failedAttempts.Length)];
+                string formattedReason = string.Format(failure, this.Name);
+                string[] parts = formattedReason.Split('\n');
+                if (parts.Length < 2) parts = new string[] { formattedReason, "Ha, the editor is on vacation and I can say whatever I want" };
+
+                // Spectacular failure! Inform the target that they narrowly evaded death
+                MediaEvent me = new MediaEvent(specificTarget, parts[0], parts[1], "We found out who was behind this attempt...", true);
+                me.InstigatingPlayer = this;
+                me.EventType = MediaEventType.Victim;
+                Parent.NextRoundNews.Add(me);
+            }
         }
 
 
@@ -422,16 +689,7 @@ namespace LD40_sgstair
             if(specificTarget == null)
             {
                 // Pick a random target with higher rank, or in the top 50 if we are #1
-                if(ThisRound.Rank > 1)
-                {
-                    int pickIndex = Parent.RandomNext(1, ThisRound.Rank) - 1;
-                    specificTarget = Parent.Players[pickIndex];
-                }
-                else
-                {
-                    int pickIndex = Parent.RandomNext(1, 50);
-                    specificTarget = Parent.Players[pickIndex];
-                }
+                specificTarget = SelectRandomTarget();
             }
 
             string smear = Smears[Parent.RandomNext(0, Smears.Length)];
@@ -441,6 +699,7 @@ namespace LD40_sgstair
 
             MediaEvent me = new MediaEvent(specificTarget, parts[0], parts[1], outcomeString, true);
             me.InstigatingPlayer = Instigator;
+            me.EventType = MediaEventType.Smear;
             Parent.NextRoundNews.Add(me);
         }
 
@@ -510,8 +769,10 @@ namespace LD40_sgstair
             CostString = Cost;
         }
 
+        public MediaEvent Media;
         public GameAction Action;
         public int ActionIndex;
+        public int ActionMediaIndex = -1; // Only set for media actions.
 
         public string CostString, RiskString, BenefitString;
     }
@@ -537,5 +798,16 @@ namespace LD40_sgstair
 
         public bool Important;
         public bool CanRespond; // If this or InstigatingPlayer is set, options exist to respond to the news story.
+
+        public MediaEventType EventType;
+    }
+
+    enum MediaEventType
+    {
+        Mundane, // Not meaningful
+        Smear, // Received a smear from another player
+        Vanity, // Current player's media hijinx, prompting for further engagement
+        Criminal, // Current player failed to do something criminal
+        Victim // Current player was nearly the victim of another player's criminal activity
     }
 }

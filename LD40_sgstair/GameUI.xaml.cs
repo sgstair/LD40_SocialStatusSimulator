@@ -83,7 +83,16 @@ namespace LD40_sgstair
         }
         void RebuildTop50Items()
         {
+            TopScroll.Children.Clear();
 
+            for(int i=0;i<50;i++)
+            {
+                GamePlayer p = GameEngine.Players[i];
+
+                TopPlayerControl c = new TopPlayerControl();
+                c.BindPlayer(p);
+                TopScroll.Children.Add(c);
+            }
         }
 
         private void ActionClicked(RoundAction obj)
@@ -110,7 +119,7 @@ namespace LD40_sgstair
         {
             // Top status area
             LabelName.Content = HumanPlayer.Name;
-            LabelPlayerPosition.Content = "(#?)"; // Todo: compute
+            LabelPlayerPosition.Content = $"(#{HumanPlayer.Values.Rank})"; // Todo: compute
             LabelAge.Content = string.Format("Age: {0}", (int)Math.Floor(HumanPlayer.Age));
             LabelTime.Content = string.Format("Q{0} {1}", GameEngine.Quarter, GameEngine.CurrentYear);
             LabelMoney.Content = GameFormat.FormatMoney(HumanPlayer.ThisRound.Money);
