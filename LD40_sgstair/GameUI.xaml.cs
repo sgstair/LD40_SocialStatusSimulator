@@ -44,13 +44,21 @@ namespace LD40_sgstair
         {
             RebuildNewsItems();
             RebuildActionItems();
+            RebuildTop50Items();
             RebuildStatus();
         }
 
 
         void RebuildNewsItems()
         {
-
+            NewsScroll.Children.Clear();
+            List<MediaEvent> newsEvents = HumanPlayer.GetPlayerNews();
+            foreach (MediaEvent e in newsEvents)
+            {
+                NewsItemControl c = new NewsItemControl();
+                c.BindNews(e);
+                NewsScroll.Children.Add(c);
+            }
         }
         void RebuildActionItems()
         {
@@ -73,7 +81,10 @@ namespace LD40_sgstair
             c.ActionClicked += ActionClicked;
             ActionScroll.Children.Add(c);
         }
+        void RebuildTop50Items()
+        {
 
+        }
 
         private void ActionClicked(RoundAction obj)
         {

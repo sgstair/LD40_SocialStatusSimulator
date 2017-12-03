@@ -10,31 +10,223 @@ namespace LD40_sgstair
     {
         public static GameAction[] Actions = new GameAction[]
         {
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Productive actions
             new GameAction {
                 Title = "Work on a small project", Description = "Make something small your fans will appreciate, that won't take too much time.",
                 MoneyCost = 50000, TimeCost = 45,
                 BenefitString = (Player, Action) => "Improve your popularity a bit.",
-                CommitAction = (Player, Action) =>
+                CommitAction = (Player, Action, Media) =>
                 {
-                    GameAction.DeductCost(Player, Action);
+                    GameAction.DeductCost(Player, Action, Media);
                     Player.ImproveSentiment(0, 0.01, ref Player.ThisRound.PublicSentiment);
                     Player.AddFans(0.005, 0.03, ref Player.ThisRound.FanCount);
+                    Player.AddFlavorHeadline(
+                        "{0} Released another micro-video today\nWeather at 11...",
+                        "New release by {0}\nThere's increasing evidence that {0} does care about their fans.",
+                        "The kids today are talking about {0}\nMore on how we're not irrelevant at 7");
                 }
             },
+
+
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Public sentiment actions
             new GameAction
             {
                 Title = "Improve public sentiment", Description = "Work on some community projects that will improve people's perception of you.",
                 MoneyCost = 10000, TimeCost = 70,
-                CommitAction = (Player, Action) =>
+                CommitAction = (Player, Action, Media) =>
                 {
-                    GameAction.DeductCost(Player, Action);
-                    Player.ImproveSentiment(0.03, 0.12, ref Player.ThisRound.PublicSentiment);
+                    GameAction.DeductCost(Player, Action, Media);
+                    Player.ImproveSentiment(0.03, 0.08, ref Player.ThisRound.PublicSentiment);
+                    // The whole point of this is publicity, so it makes sense that news would be involved.
+                    Player.AddFlavorHeadline(
+                        "{0} was seen today at the animal shelter\nApparently {0} spends a lot of time there helping the animals",
+                        "We bumped into {0} at a trash picking event\n{0} says the community looks best clean");
                 }
-            }
+            },
+            new GameAction
+            {
+                Title = "Donate to charity", Description = "Donate a lot of money to helping the developing world",
+                MoneyCost = 30000000, TimeCost = 10,
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) && GameAction.RequirePublicSentiment(Player, 0.1),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+                    Player.ImproveSentiment(0.06, 0.12, ref Player.ThisRound.PublicSentiment);
+                    Player.AddFlavorHeadline(
+                        "{0} is feeding kids in Africa\nWe just heard of a large donation made by {0} to the ...",
+                        "Science education for the third world\nSurprisingly we just got news that {0} donated a large sum to help promote science education in the third world...");
 
+                }
+            },
+
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Smear campaign actions
+            new GameAction
+            {
+                Title = "Smear Campaign", Description = "Publish false allegations about someone doing better than you",
+                MoneyCost = 135000, TimeCost = 15, RiskPercent = 0.03,
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) && GameAction.RequireAffinityMedia(Player, 0.2),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+
+                    Player.ImproveAffinity(0.005, 0.001, ref Player.ThisRound.AffinityMedia);
+
+                }
+            },
+
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Dig up dirt actions
+
+
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Networking actions
+            new GameAction
+            {
+                Title = "Professional Networking", Description = "Connect with people who might help you with your work",
+                MoneyCost = 5000, TimeCost = 5,
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+                    Player.ImproveAffinity(0.005, 0.02, ref Player.ThisRound.AffinityProfessional);
+                    // No news from these minor events
+                }
+            },
+            new GameAction
+            {
+                Title = "Professional Networking II", Description = "Host an event to get the experts in your community together",
+                MoneyCost = 1000000, TimeCost = 55,
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) && GameAction.RequireAffinityProfessional(Player, 0.3),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+                    Player.ImproveAffinity(0.012, 0.35, ref Player.ThisRound.AffinityProfessional);
+                    Player.AddFlavorHeadline(
+                        "Wildly successful professional conference attracts experts\n{0}, who organized the event, said the outcome was better than expected",
+                        "New workshop for experts turning heads\nThis fantastic opportunity was organized by {0}, who has been incredibly active in the space...");
+                }
+            },
+            new GameAction
+            {
+                Title = "Media Networking", Description = "Get to know reporters in your area",
+                MoneyCost = 10000, TimeCost = 5,
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) && GameAction.RequireAffinityProfessional(Player, 0.08),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+                    Player.ImproveAffinity(0.005, 0.02, ref Player.ThisRound.AffinityMedia);
+                }
+            },
+            new GameAction
+            {
+                Title = "Media Networking II", Description = "Sponsor a media event to build relationships with the media",
+                MoneyCost = 5000000, TimeCost = 60,
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) && GameAction.RequireAffinityMedia(Player, 0.25),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+                    Player.ImproveAffinity(0.13, 0.36, ref Player.ThisRound.AffinityMedia);
+                    //Todo: add headlines - this is really a polish work item.
+                }
+            },
+            new GameAction
+            {
+                Title = "Social Networking", Description = "Find the places where all the popular people hang out",
+                MoneyCost = 50000, TimeCost = 5,
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) && GameAction.RequireAffinityProfessional(Player, 0.11),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+                    Player.ImproveAffinity(0.005, 0.02, ref Player.ThisRound.AffinitySocial);
+                }
+            },
+            new GameAction
+            {
+                Title = "Social Networking II", Description = "Throw an elaborate party for the rich and famous",
+                MoneyCost = 10000000, TimeCost = 35,
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) && GameAction.RequireAffinitySocial(Player, 0.35),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+                    Player.ImproveAffinity(0.012, 0.035, ref Player.ThisRound.AffinitySocial);
+                }
+            },
+            new GameAction
+            {
+                Title = "Criminal Networking", Description = "You've seen the seedy underbelly of this place, explore deeper",
+                MoneyCost = 50000, TimeCost = 5, RiskPercent = 0.02,
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) && GameAction.RequireAffinityProfessional(Player, 0.15) &&
+                    GameAction.RequireAffinityMedia(Player, 0.15) && GameAction.RequireAffinitySocial(Player, 0.20),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+                    // Tell game engine about what kind of criminal activity might be taking place
+                    Player.SetCriminalHeadlines(
+                        "Police raid of brothel nets {0}\nPolice were surprised to see {0} while executing their sting operation on...",
+                        "{0} Nabbed in illegal firearm bust\n{0} claimed to just be \"holding it for a friend\"...");
+
+                    if(GameAction.DidEvadeCriminalRisk(Player, Action))
+                    {
+                        Player.ImproveAffinity(0.005, 0.02, ref Player.ThisRound.AffinityCriminal);
+                    }
+                }
+            },
+            new GameAction
+            {
+                Title = "Criminal Networking II", Description = "Bribe some local crime bosses to increase your clout",
+                MoneyCost = 5000000, TimeCost = 10, RiskPercent = 0.08,
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) && GameAction.RequireAffinityCriminal(Player, 0.25),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+
+                    if(GameAction.DidEvadeCriminalRisk(Player, Action))
+                    {
+                        Player.ImproveAffinity(0.12, 0.25, ref Player.ThisRound.AffinityCriminal);
+                    }
+                }
+            },
+
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Newsworthy actions
+
+
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Debt reduction actions
+            new GameAction
+            {
+                Title = "File for Bankruptcy", Description = "Lose the crippling debt, but also most of your connections and fans",
+                MoneyCost = 0, TimeCost = 80,
+                CanUseAction = (Player, Action, Media) => Player.ThisRound.Money < 0,
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+                    Player.ThisRound.Money = 100000;
+                    if(Player.ThisRound.PublicSentiment > 0)
+                    {
+                        Player.ThisRound.PublicSentiment /= 5;
+                    }
+                    Player.ThisRound.FanCount /= 2;
+                    Player.ThisRound.AffinityCriminal /= 5;
+                    Player.ThisRound.AffinitySocial /= 5;
+                    Player.ThisRound.AffinityMedia /= 5;
+                    Player.ThisRound.AffinityProfessional /= 5;
+                }
+            },
+
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Criminal actions
 
 
         };
+
+        public static GameAction[] MediaActions = new GameAction[]
+        {
+
+        };
+
     }
 
 
@@ -102,12 +294,36 @@ namespace LD40_sgstair
     class GameAction
     {
 
-        public static bool CanUseBase(GamePlayer Player, GameAction Action)
+        public static bool CanUseBase(GamePlayer Player, GameAction Action, MediaEvent Media)
         {
-            return Player.ThisRound.Money >= Action.MoneyCost && Player.ThisRound.TimeRemaining > Action.TimeCost;
+            return Player.ThisRound.Money >= Action.MoneyCost && Player.ThisRound.TimeRemaining >= Action.TimeCost;
+        }
+        public static bool RequirePublicSentiment(GamePlayer Player, double Requirement)
+        {
+            return Player.AffinityAsPercent(Player.ThisRound.PublicSentiment) >= Requirement;
+        }
+        public static bool RequireAffinityProfessional(GamePlayer Player, double Requirement)
+        {
+            return Player.AffinityAsPercent(Player.ThisRound.AffinityProfessional) >= Requirement;
+        }
+        public static bool RequireAffinityMedia(GamePlayer Player, double Requirement)
+        {
+            return Player.AffinityAsPercent(Player.ThisRound.AffinityMedia) >= Requirement;
+        }
+        public static bool RequireAffinitySocial(GamePlayer Player, double Requirement)
+        {
+            return Player.AffinityAsPercent(Player.ThisRound.AffinitySocial) >= Requirement;
+        }
+        public static bool RequireAffinityCriminal(GamePlayer Player, double Requirement)
+        {
+            return Player.AffinityAsPercent(Player.ThisRound.AffinityCriminal) >= Requirement;
+        }
+        public static bool DidEvadeCriminalRisk(GamePlayer Player, GameAction Action)
+        {
+            return Player.DidEvadeCriminalRisk(Action.RiskPercent);
         }
 
-        public static void DeductCost(GamePlayer Player, GameAction Action)
+        public static void DeductCost(GamePlayer Player, GameAction Action, MediaEvent Media)
         {
             Player.ThisRound.Money -= Action.MoneyCost;
             Player.ThisRound.TimeRemaining -= Action.TimeCost;
@@ -120,7 +336,11 @@ namespace LD40_sgstair
             if (stringParts.Count == 0) return "FREE!";
             return string.Join(", ", stringParts);
         }
-
+        public static string DefaultRiskString(GamePlayer Player, GameAction Action)
+        {
+            if (Action.RiskPercent == 0) return null;
+            return GameFormat.FormatPercent(Action.RiskPercent);
+        }
 
 
         public string Title;
@@ -128,13 +348,15 @@ namespace LD40_sgstair
 
         public long MoneyCost;
         public int TimeCost;
+        public int NumQuarters = 1; // Some actions will require time for multiple consecutive quarters to complete.
+        public double RiskPercent;
 
         public Func<GamePlayer, GameAction, string> CostString = DefaultCostString;
-        public Func<GamePlayer, GameAction, string> RiskString;
+        public Func<GamePlayer, GameAction, string> RiskString = DefaultRiskString;
         public Func<GamePlayer, GameAction, string> BenefitString;
 
         // Determine if the action can be used
-        public Func<GamePlayer, GameAction, bool> CanUseAction = CanUseBase;
-        public Action<GamePlayer, GameAction> CommitAction = DeductCost;
+        public Func<GamePlayer, GameAction, MediaEvent, bool> CanUseAction = CanUseBase;
+        public Action<GamePlayer, GameAction, MediaEvent> CommitAction = DeductCost;
     }
 }

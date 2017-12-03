@@ -23,6 +23,11 @@ namespace LD40_sgstair
         public static readonly long WorldPopulation = 10000000000; // 10 billion
 
         public List<GamePlayer> Players = new List<GamePlayer>();
+        public Dictionary<GamePlayer, List<MediaEvent>> RoundNews = new Dictionary<GamePlayer, List<MediaEvent>>();
+        public List<MediaEvent> NextRoundNews = new List<MediaEvent>();
+
+
+
         public int Quarter = 1;
         public int Year = 0;
         public int YearBase = 2017;
@@ -51,8 +56,8 @@ namespace LD40_sgstair
                 cpu.BaseAge = 20 + r.NextDouble() * 40;
                 cpu.LifeExpectancy = 50 + r.NextDouble() * 40;
 
-                cpu.Values.Money = 100000 * i + r.Next(0, 10000000);
-                cpu.Values.FanCount = 10000 * i + r.Next(0, 100000);
+                cpu.Values.Money = (long)(100000 * i * (r.NextDouble() + 0.8));
+                cpu.Values.FanCount = (int)(20000 * i * (r.NextDouble() + 0.8));
                 cpu.Values.PublicSentiment = r.Next(-0x5000, 0x5000);
                 cpu.Values.AffinityProfessional = r.Next(0, 0x5000);
                 cpu.Values.AffinityMedia = r.Next(0, 0x5000);
@@ -75,21 +80,51 @@ namespace LD40_sgstair
         }
         public void BeginRound()
         {
+            // Compute rank for all the players
+            Players.Sort((a, b) => Math.Sign(b.Values.FanCount - a.Values.FanCount));
+            for (int i = 0; i < Players.Count; i++)
+            {
+                Players[i].Values.Rank = i + 1;
+            }
+
             // Prepare players for this round
-            foreach(GamePlayer p in Players)
+            foreach (GamePlayer p in Players)
             {
                 p.BeginRound();                
             }
 
             // Advance buffered media fallout
+            // Build a per-user list of the news to assist with cpu cost of browsing it.
+            RoundNews = new Dictionary<GamePlayer, List<MediaEvent>>();
+            foreach(MediaEvent e in NextRoundNews)
+            {
+                AddNews(e.AffectedPlayer, e);
+                AddNews(e.InstigatingPlayer, e);
+            }
+            NextRoundNews.Clear();
+
         }
+
+        void AddNews(GamePlayer p, MediaEvent e)
+        {
+            if (p == null) return;
+            List<MediaEvent> playerNews;
+            if(!RoundNews.TryGetValue(p, out playerNews))
+            {
+                playerNews = new List<MediaEvent>();
+                RoundNews.Add(p, playerNews);
+            }
+            playerNews.Add(e);
+        }
+
 
         public void CompleteRound()
         {
             // Play all the AI players
             foreach (GamePlayer p in Players)
             {
-
+                if(!p.Human)
+                    p.PlayAI();
             }
 
             // Commit changes from this round
@@ -143,6 +178,8 @@ namespace LD40_sgstair
             return newValues;
         }
 
+        public int Rank;
+
         public long Money;
         public int TimeRemaining;
         public long FanCount;
@@ -168,6 +205,7 @@ namespace LD40_sgstair
 
         public PlayerValues Values = new PlayerValues(); // Master value list for player
         public PlayerValues ThisRound; // Accumulated values as player takes actions, but not fully applied yet.
+        public PlayerValues LastRound;
 
         public GamePlayer(Engine parentEngine, string playerName, bool playerHuman = false)
         {
@@ -178,12 +216,17 @@ namespace LD40_sgstair
 
         List<RoundAction> RoundActions = new List<RoundAction>();
 
-        
+
+        public override string ToString()
+        {
+            return $"GamePlayer('{Name}',{Math.Floor(Age)}/{Math.Floor(LifeExpectancy)}, #{Values.Rank}, {GameFormat.FormatMoney(Values.Money)}, {GameFormat.FormatFans(Values.FanCount)}";
+        }
 
 
         public void BeginRound()
         {
             Values.TimeRemaining = 90; // 90 days per quarter, roughly
+            if(LastRound == null) LastRound = (PlayerValues)Values.Clone(); // First round only.
             ThisRound = (PlayerValues)Values.Clone();
 
             // Public perception wanders a bit
@@ -192,10 +235,16 @@ namespace LD40_sgstair
             // Add fans based on public perception and existing fanbase
             double sentimentPercent = 0.05 * AffinityAsPercent(ThisRound.PublicSentiment);
             AddFans(sentimentPercent, sentimentPercent + 0.02, ref ThisRound.FanCount);
+
+            // Make some money based on the size of the fanbase.
+            double moneyPerFan = Parent.NextPercent(0.03, 0.18);
+            long addMoney = (long)Math.Round(ThisRound.FanCount * moneyPerFan);
+            ThisRound.Money += addMoney;
         }
 
         public void CompleteRound()
         {
+            LastRound = (PlayerValues)Values.Clone();
             Values = (PlayerValues)ThisRound.Clone();
         }
 
@@ -239,6 +288,160 @@ namespace LD40_sgstair
                 int index = Parent.RandomNext(0, actions.Count);
                 CommitAction(actions[index]);
             }
+        }
+
+        // News
+        public void QueueNews(string blurb, string subBlurb, string outcome, bool highlight = false)
+        {
+            MediaEvent me = new MediaEvent(this, blurb, subBlurb, outcome, highlight);
+            Parent.NextRoundNews.Add(me);
+        }
+
+        public void QueueNews(string newsConcentrate, string outcome = null, bool highlight = false)
+        {
+            string formattedReason = string.Format(newsConcentrate, this.Name);
+            string[] parts = formattedReason.Split('\n');
+            if (parts.Length < 2) parts = new string[] { formattedReason, "Ha, the editor is on vacation and I can say whatever I want" };
+            QueueNews(parts[0], parts[1], outcome, highlight);
+        }
+
+        /// <summary>
+        /// Meaningless news - just exists to make the headlines a little more interesting.
+        /// </summary>
+        public void AddFlavorHeadline(params string[] Reasons)
+        {
+            string Reason = Reasons[Parent.RandomNext(0, Reasons.Length)];
+            QueueNews(Reason);
+        }
+
+
+
+        public List<MediaEvent> GetPlayerNews()
+        {
+            List<MediaEvent> importantNews = new List<MediaEvent>();
+            List<MediaEvent> otherNews = new List<MediaEvent>();
+            List<MediaEvent> myNews;
+            if (Parent.RoundNews.TryGetValue(this, out myNews))
+            {
+                foreach (MediaEvent me in myNews)
+                {
+                    if (me.AffectedPlayer == this || me.InstigatingPlayer == this)
+                    {
+                        if (me.Important) { importantNews.Add(me); } else { otherNews.Add(me); }
+                    }
+                }
+                importantNews.AddRange(otherNews);
+            }
+            return importantNews;
+        }
+
+
+        // Crminal handling
+        public void ApplyFine(long fineAmount, string fineReason)
+        {
+            string outcome = string.Format("You were fined {0}", GameFormat.FormatMoney(fineAmount));
+            ThisRound.Money -= fineAmount;
+
+            QueueNews(fineReason, outcome, true);
+        }
+
+
+        public bool DidEvadeCriminalRisk(double percentRisk)
+        {
+            double outcome = Parent.NextPercent(0, 1);
+            if(outcome <= percentRisk)
+            {
+                // Risk bit you. Now we decide how to punish the player, depending on the risk and outcome %
+                // What was the player even doing? Decide.
+
+                string Reason = CriminalHeadlines[Parent.RandomNext(0, CriminalHeadlines.Length)];
+
+                if( percentRisk <= 0.5 )
+                {
+                    // Outcome: Fined. Fines in this range are pretty negligible, and generally < $10k
+                    int baseFine = (int)Math.Round(percentRisk * 100 * 1000);
+                    int actualFine = (int)Math.Round(baseFine * percentRisk * 100);
+                    ApplyFine(actualFine, Reason);
+                }
+                else
+                {
+                    // Outcome: Fined or jailed (based on outcome)
+                    if (outcome <= (percentRisk / 5))
+                    {
+                        // Jailed
+                        int maxJailTerm = (int)Math.Round(percentRisk * 1000); // 15% chance = 150 quarters max sentence (~38 years)
+                        int jailTerm = (int)Math.Round(outcome * maxJailTerm / (percentRisk / 5));
+
+                        // Todo: figure this part out.
+                    }
+                    else
+                    {
+                        // Fined. Fines in this range are a little more severe, but cap at around $10M (50% risk, 50% outcome = 25M, but most high risks are ~25-35%)
+                        long baseFine = (long)Math.Round(percentRisk * 1000 * 1000 * 100);
+                        long actualFine = (long)Math.Round(baseFine * outcome);
+                        ApplyFine(actualFine, Reason);
+                    }
+                }
+
+                return false;
+            }
+            return true;
+        }
+
+        string[] CriminalHeadlines;
+        public void SetCriminalHeadlines(params string[] Reasons)
+        {
+            CriminalHeadlines = Reasons;
+        }
+
+
+        public void SmearCampaign(double effectiveness, double risk, GamePlayer specificTarget = null)
+        {
+            double outcome = Parent.NextPercent(0, 1);
+            GamePlayer Instigator = null;
+            string[] Smears = new string[]
+            {
+                "Anonymous sources allege {0} has a drug problem\nOf course we can't reveal our sources, but they're probably right in our estimation",
+                "{0} is a stalker, sources say\nBlurry footage shows {0} following someone in the dark, you can tell by the hat",
+                "Does {0} have cancer, and are they hiding it?\nWeb denizen diagnoses {0}, claiming he can tell by \"the pixels\""
+            };
+            string outcomeString;
+
+            if(outcome < risk)
+            {
+                // Caught! Target will know it was you trying to smear them.
+                Instigator = this;
+                outcomeString = "We found out who was behind these false allegations...";
+            }
+            else
+            {
+                // Not caught
+                outcomeString = "The motive for this smear campaign is unknown";
+            }
+
+            if(specificTarget == null)
+            {
+                // Pick a random target with higher rank, or in the top 50 if we are #1
+                if(ThisRound.Rank > 1)
+                {
+                    int pickIndex = Parent.RandomNext(1, ThisRound.Rank) - 1;
+                    specificTarget = Parent.Players[pickIndex];
+                }
+                else
+                {
+                    int pickIndex = Parent.RandomNext(1, 50);
+                    specificTarget = Parent.Players[pickIndex];
+                }
+            }
+
+            string smear = Smears[Parent.RandomNext(0, Smears.Length)];
+            string formattedReason = string.Format(smear, this.Name);
+            string[] parts = formattedReason.Split('\n');
+            if (parts.Length < 2) parts = new string[] { formattedReason, "Ha, the editor is on vacation and I can say whatever I want" };
+
+            MediaEvent me = new MediaEvent(specificTarget, parts[0], parts[1], outcomeString, true);
+            me.InstigatingPlayer = Instigator;
+            Parent.NextRoundNews.Add(me);
         }
 
 
@@ -316,6 +519,23 @@ namespace LD40_sgstair
     // Deal with media stuff after getting core game loop working.
     class MediaEvent
     {
+        public MediaEvent(GamePlayer affected, string _heading, string _subheading, string _outcome, bool _important)
+        {
+            Heading = _heading;
+            SubHeading = _subheading;
+            OutcomeText = _outcome;
+            Important = _important;
+            AffectedPlayer = affected;
+        }
 
+        public string Heading;
+        public string SubHeading;
+        public string OutcomeText;
+
+        public GamePlayer AffectedPlayer;
+        public GamePlayer InstigatingPlayer; // If a media risk is failed, the instigating player will be known. todo: figure out how to manage retalitation actions.
+
+        public bool Important;
+        public bool CanRespond; // If this or InstigatingPlayer is set, options exist to respond to the news story.
     }
 }

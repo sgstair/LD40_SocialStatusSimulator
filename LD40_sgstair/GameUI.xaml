@@ -69,7 +69,9 @@
         <TabControl x:Name="tabControl" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Column="1" Grid.Row="1" Background="{x:Null}" FontSize="18">
             <TabItem Header="News">
                 <Grid>
-                    <ScrollViewer x:Name="NewsScroll"/>
+                    <ScrollViewer>
+                        <StackPanel  x:Name="NewsScroll"/>
+                    </ScrollViewer>
                 </Grid>
             </TabItem>
             <TabItem Header="Actions">
@@ -81,7 +83,9 @@
             </TabItem>
             <TabItem Header="Top 50">
                 <Grid>
-                    <ScrollViewer x:Name="TopScroll"/>
+                    <ScrollViewer>
+                        <StackPanel  x:Name="TopScroll"/>
+                    </ScrollViewer>
                 </Grid>
             </TabItem>
         </TabControl>
