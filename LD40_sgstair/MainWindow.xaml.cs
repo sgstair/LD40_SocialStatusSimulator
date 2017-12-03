@@ -23,7 +23,9 @@ namespace LD40_sgstair
         public MainWindow()
         {
             InitializeComponent();
-            StartGame();
+            StartScreen.LinkedWindow = this;
+            GameOverScreen.LinkedWindow = this;
+            GameUI.LinkedWindow = this;
 
             Closing += MainWindow_Closing;
             RestoreWindowPosition();
@@ -54,10 +56,40 @@ namespace LD40_sgstair
             }
         }
 
+        public void MainMenu()
+        {
+            StartScreen.Visibility = Visibility.Visible;
+            GameOverScreen.Visibility = Visibility.Hidden;
+            GameUI.Visibility = Visibility.Hidden;
+        }
+
         public void StartGame()
         {
             GameUI.StartNewGame();
+            StartScreen.Visibility = Visibility.Hidden;
+            GameOverScreen.Visibility = Visibility.Hidden;
             GameUI.Visibility = Visibility.Visible;
         }
+
+        internal void GameOver(GamePlayer gameOverPlayer)
+        {
+            GameOverScreen.BindPlayer(gameOverPlayer);
+            StartScreen.Visibility = Visibility.Hidden;
+            GameUI.Visibility = Visibility.Hidden;
+            GameOverScreen.Visibility = Visibility.Visible;
+        }
+
+        public void Exit()
+        {
+            Close();
+        }
+
+        public void StartTest()
+        {
+            StartGame();
+            // Run test action
+            GameUI.LaunchTest();
+        }
+
     }
 }

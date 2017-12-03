@@ -55,10 +55,21 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="GameOverControl.xaml.cs">
+      <DependentUpon>GameOverControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="NameGenerator.cs" />
+    <Compile Include="StartScreenControl.xaml.cs">
+      <DependentUpon>StartScreenControl.xaml</DependentUpon>
+    </Compile>
     <Compile Include="TopPlayerControl.xaml.cs">
       <DependentUpon>TopPlayerControl.xaml</DependentUpon>
     </Compile>
     <Page Include="ActionItemControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="GameOverControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -95,6 +106,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="PercentBar.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="StartScreenControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

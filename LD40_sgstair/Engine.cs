@@ -35,15 +35,14 @@ namespace LD40_sgstair
         public int CurrentYear {  get { return YearBase + Year; } }
 
 
-        public GamePlayer PrepareSinglePlayerGame(string name = "human")
+        public GamePlayer PrepareSinglePlayerGame(string name = null)
         {
+            if (name == null) name = GenerateName();
             GamePlayer human = new GamePlayer(this, name, true);
             Players.Add(human);
 
             // Initial values for human.
-            human.Values.Money = 1000000;
-            // Debug:
-            human.Values.Money = 100000000;
+            human.Values.Money = 10000000;
             human.Values.FanCount = 100000; // 100k fans
             human.Values.PublicSentiment = 0; // Neutral public sentiment
             human.Values.AffinityProfessional = 0; // Neutral affinities
@@ -53,7 +52,7 @@ namespace LD40_sgstair
 
             for (int i=0;i<500;i++)
             {
-                GamePlayer cpu = new GamePlayer(this, i.ToString(), false);
+                GamePlayer cpu = new GamePlayer(this, GenerateName(), false);
                 Players.Add(cpu);
 
                 cpu.BaseAge = 20 + r.NextDouble() * 40;
@@ -75,17 +74,35 @@ namespace LD40_sgstair
             return human;
         }
 
-        int playerIndex = 500;
+        HashSet<string> UsedNames = new HashSet<string>();
+
+        string GenerateName()
+        {
+            // There should be 200*1000 names in the generator, we will not exhaust that many.
+            string use = null;
+            for (int i=0;i<1000;i++)
+            {
+                use = NameGenerator.GenerateName(r.Next(), r.Next());
+                if(!UsedNames.Contains(use))
+                {
+                    UsedNames.Add(use);
+                    return use;
+                }
+            }
+            // Give up. May produce duplicates if an extreme number of users are generated.
+            return use;
+        }
+
 
         void AddCpuPlayer()
         {
-            GamePlayer cpu = new GamePlayer(this, (playerIndex++).ToString(), false);
+            GamePlayer cpu = new GamePlayer(this, GenerateName(), false);
             Players.Add(cpu);
 
             long maxFans = Players[49].Values.FanCount;
             long maxMoney = 20000000;
 
-            cpu.BaseAge = 20 + r.NextDouble() * 40;
+            cpu.BaseAge = 20 + r.NextDouble() * 40 - (Year + Quarter*0.25); // Players starting late need to be adjusted back to the starting time.
             cpu.LifeExpectancy = 50 + r.NextDouble() * 40;
 
             cpu.Values.Money = (long)Math.Round(maxMoney * r.NextDouble());
@@ -109,6 +126,7 @@ namespace LD40_sgstair
             for (int i = 0; i < Players.Count; i++)
             {
                 Players[i].Values.Rank = i + 1;
+                if(Players[i].ThisRound != null)  Players[i].ThisRound.Rank = i + 1; // Hax
             }
             // remove players who are dead and rank below the top 50
             Players.RemoveAll((p) => p.Dead && p.Values.Rank > 50 && p.Human == false);
@@ -177,7 +195,7 @@ namespace LD40_sgstair
             {
                 if(p.Age > p.LifeExpectancy)
                 {
-                    p.Kill("{0}died of natural causes", "{0} Lived to the old age of {1}");
+                    p.Kill("{0} died of natural causes", "{0} Lived to the old age of {1}");
                 }
             }
         }
@@ -242,9 +260,25 @@ namespace LD40_sgstair
         public int FinalAge = 0;
         public bool Dead = false;
         public bool InJail = false;
+        public bool Retired = false;
 
         public string DeadHowDied = "not dead";
         public string DeadContext = "really not dead";
+
+        public long BestMoney = 0;
+        public long BestFans = 0;
+        public int BestRank = 5000;
+        public int FineCount;
+        public long FineTotal;
+        public int JailCount;
+        public int JailQuarters;
+        public int AvoidedCriminalDetectionCount = 0;
+        public int SmearCampaigns = 0;
+        public int FailedSmearCampaigns = 0;
+
+        public int WorkedDays = 0;
+        public int LazyDays = 0;
+        public int TotalDays {  get { return WorkedDays + LazyDays; } }
 
         public PlayerValues Values = new PlayerValues(); // Master value list for player
         public PlayerValues ThisRound; // Accumulated values as player takes actions, but not fully applied yet.
@@ -317,8 +351,13 @@ namespace LD40_sgstair
             LastRound = (PlayerValues)Values.Clone(); // LastRound = Values at the start of the previous round
             Values = (PlayerValues)ThisRound.Clone(); // Values = Values at the start of the current round. (only true during the round)
 
-            // Future: track peak money, fans
+            // Track peak money, fans
+            BestMoney = Math.Max(Values.Money, BestMoney);
+            BestFans = Math.Max(Values.FanCount, BestFans);
+            BestRank = Math.Min(Values.Rank, BestRank);
 
+            WorkedDays += 90 - Values.TimeRemaining;
+            LazyDays += Values.TimeRemaining;
 
             // Future: Update life expectancy based on stress.
 
@@ -329,6 +368,11 @@ namespace LD40_sgstair
             // Complete partial projects that are done.
             foreach (PartialProject p in PartialProjects)
             {
+                if(p.JailTime)
+                {
+                    JailQuarters++;
+                }
+
                 p.QuartersRemaining--;
                 if(p.QuartersRemaining == 0)
                 {
@@ -516,6 +560,9 @@ namespace LD40_sgstair
             string outcome = string.Format("You were fined {0}", GameFormat.FormatMoney(fineAmount));
             ThisRound.Money -= fineAmount;
 
+            FineCount++;
+            FineTotal += fineAmount;
+
             QueueNews(fineReason, outcome, true, MediaEventType.Criminal);
         }
 
@@ -540,6 +587,7 @@ namespace LD40_sgstair
             p.JailTime = true;
 
             InJail = true;
+            JailCount++;
 
             PartialProjects.Add(p);
 
@@ -583,6 +631,10 @@ namespace LD40_sgstair
                 }
 
                 return false;
+            }
+            else
+            {
+                AvoidedCriminalDetectionCount++;
             }
             return true;
         }
@@ -679,11 +731,13 @@ namespace LD40_sgstair
                 // Caught! Target will know it was you trying to smear them.
                 Instigator = this;
                 outcomeString = "We found out who was behind these false allegations...";
+                FailedSmearCampaigns++;
             }
             else
             {
                 // Not caught
                 outcomeString = "The motive for this smear campaign is unknown";
+                SmearCampaigns++;
             }
 
             if(specificTarget == null)

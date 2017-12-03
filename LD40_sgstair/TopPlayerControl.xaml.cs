@@ -40,7 +40,7 @@ namespace LD40_sgstair
                 LabelArrow.Content = "="; // circle in webdings
                 LabelArrow.Foreground = Brushes.DarkGoldenrod;
             }
-            else if(dRank > 0)
+            else if(dRank < 0)
             {
                 LabelArrow.Content = "5"; // Up arrow
                 LabelArrow.Foreground = Brushes.DarkGreen;

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -25,9 +26,12 @@ namespace LD40_sgstair
             InitializeComponent();
         }
 
+        internal MainWindow LinkedWindow;
+
         Engine GameEngine;
         GamePlayer HumanPlayer;
         RoundAction EndRoundAction = new RoundAction("End Round", "Relax for the rest of this quarter and advance to the next one.", "Cost: ");
+        RoundAction RetireAction = new RoundAction("Retire", "You've had your fun, get out of this crazy rat race here.", null);
 
 
         public void StartNewGame()
@@ -38,6 +42,30 @@ namespace LD40_sgstair
             GameEngine.BeginGame();
             GameEngine.BeginRound();
             UpdateUIForQuarter();
+        }
+
+        public void LaunchTest()
+        {
+            TestRound();
+        }
+
+        void TestRound(int index = 0)
+        {
+            if (index >= 1000) return;
+
+            ThreadPool.QueueUserWorkItem((context) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    // Run a quarter of simulation
+                    GameEngine.CompleteRound();
+                    GameEngine.BeginRound();
+                    UpdateUIForQuarter();
+                });
+                // Recursively call self (to queue again)
+                Thread.Sleep(15);
+                TestRound(index + 1);
+            });
         }
 
         void UpdateUIForQuarter()
@@ -65,6 +93,15 @@ namespace LD40_sgstair
             ActionScroll.Children.Clear();
             List<RoundAction> actions = HumanPlayer.PossibleActions();
             ActionItemControl c;
+
+            // If the player has hit the top 50, provide the "Retire" option
+            if (HumanPlayer.BestRank <= 50)
+            {
+                c = new ActionItemControl();
+                c.BindAction(RetireAction);
+                c.ActionClicked += ActionClicked;
+                ActionScroll.Children.Add(c);
+            }
 
             foreach (RoundAction action in actions)
             {
@@ -104,7 +141,18 @@ namespace LD40_sgstair
                 GameEngine.BeginRound();
                 UpdateUIForQuarter();
 
+                // Did player die? If so, we're going to game over.
+                if(HumanPlayer.Dead)
+                {
+                    LinkedWindow.GameOver(HumanPlayer);
+                }
 
+            }
+            else if(obj == RetireAction)
+            {
+                GameEngine.CompleteRound();
+                HumanPlayer.Retired = true;
+                LinkedWindow.GameOver(HumanPlayer);
             }
             else
             {

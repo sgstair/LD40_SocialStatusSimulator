@@ -13,6 +13,8 @@
         </LinearGradientBrush>
     </Window.Background>
     <Grid>
-        <local:GameUI x:Name="GameUI" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+        <local:GameUI x:Name="GameUI" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Visibility="Hidden"/>
+        <local:StartScreenControl x:Name="StartScreen" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+        <local:GameOverControl x:Name="GameOverScreen" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Visibility="Hidden"/>
     </Grid>
 </Window>

@@ -318,8 +318,8 @@ namespace LD40_sgstair
             new GameAction
             {
                 Title = "Deal Drugs to the Elite", Description = "So many of these stars love their drugs, maybe we can get some money to work with",
-                MoneyCost = 20000, TimeCost = 35, RiskPercent = 0.08,
-                BenefitString = (Player, Action) => "$500k if not caught",
+                MoneyCost = 200000, TimeCost = 35, RiskPercent = 0.08,
+                BenefitString = (Player, Action) => "$5M if not caught",
                 CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) && 
                     GameAction.RequireAffinityCriminal(Player, 0.13) && GameAction.RequireAffinitySocial(Player, 0.20),
                 CommitAction = (Player, Action, Media) =>
@@ -331,7 +331,7 @@ namespace LD40_sgstair
                         );
                     if(GameAction.DidEvadeCriminalRisk(Player, Action))
                     {
-                        Player.ThisRound.Money += 500000;
+                        Player.ThisRound.Money += 5000000;
                         Player.ImproveAffinity(0.005, 0.05, ref Player.ThisRound.AffinityCriminal);
                         Player.ImproveAffinity(0.005, 0.03, ref Player.ThisRound.AffinitySocial);
                     }
