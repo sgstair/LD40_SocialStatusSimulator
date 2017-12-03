@@ -1,0 +1,23 @@
+﻿<UserControl x:Class="LD40_sgstair.ActionItemControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:LD40_sgstair"
+             mc:Ignorable="d" 
+             d:DesignHeight="80" d:DesignWidth="700">
+    <Grid Height="90">
+        <Rectangle x:Name="RectBackground" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Margin="5" Fill="#99FFFFFF" RadiusX="15" RadiusY="15"/>
+        <Label x:Name="LabelHeader" Content="Heading text" FontSize="18" Margin="15,5,0,0"/>
+        <Label x:Name="LabelDescription" Content="Description text" Margin="25,30,0,0"/>
+        <WrapPanel Margin="25,55,0,0">
+            <Label x:Name="LabelCost" Content="Cost: Things" Foreground="DarkBlue" FontWeight="Bold"/>
+            <Separator Width="15"/>
+            <Label x:Name="LabelRisk" Content="Risk: Things" Foreground="DarkRed" FontWeight="Bold"/>
+            <Separator Width="15"/>
+            <Label x:Name="LabelBenefit" Content="Benefit: Things" Foreground="DarkGreen" FontWeight="Bold"/>
+
+        </WrapPanel>
+
+    </Grid>
+</UserControl>

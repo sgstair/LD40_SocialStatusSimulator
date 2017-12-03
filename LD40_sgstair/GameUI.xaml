@@ -74,7 +74,9 @@
             </TabItem>
             <TabItem Header="Actions">
                 <Grid>
-                    <ScrollViewer x:Name="ActionScroll"/>
+                    <ScrollViewer>
+                        <StackPanel  x:Name="ActionScroll"/>
+                    </ScrollViewer>
                 </Grid>
             </TabItem>
             <TabItem Header="Top 50">

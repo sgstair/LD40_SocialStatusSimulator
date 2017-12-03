@@ -16,6 +16,7 @@ namespace LD40_sgstair
                 BenefitString = (Player, Action) => "Improve your popularity a bit.",
                 CommitAction = (Player, Action) =>
                 {
+                    GameAction.DeductCost(Player, Action);
                     Player.ImproveSentiment(0, 0.01, ref Player.ThisRound.PublicSentiment);
                     Player.AddFans(0.005, 0.03, ref Player.ThisRound.FanCount);
                 }
@@ -26,6 +27,7 @@ namespace LD40_sgstair
                 MoneyCost = 10000, TimeCost = 70,
                 CommitAction = (Player, Action) =>
                 {
+                    GameAction.DeductCost(Player, Action);
                     Player.ImproveSentiment(0.03, 0.12, ref Player.ThisRound.PublicSentiment);
                 }
             }
@@ -58,7 +60,7 @@ namespace LD40_sgstair
                 printValue = (long)Math.Round(moneyValue / 1000.0);
                 suffix = "k";
             }
-            return string.Format("${0}{1}", printValue, suffix);
+            return string.Format("${0:N0}{1}", printValue, suffix);
         }
         public static string FormatTime(int days)
         {
@@ -93,7 +95,7 @@ namespace LD40_sgstair
                 suffix = " thousand";
                 fans = (long)Math.Round(fans / 1000.0);
             }
-            return string.Format("{0}{1} fans", fans, suffix);
+            return string.Format("{0:N0}{1} fans", fans, suffix);
         }
     }
 

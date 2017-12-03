@@ -190,13 +190,13 @@ namespace LD40_sgstair
             ImproveSentiment(-0.01, 0.01, ref ThisRound.PublicSentiment);
 
             // Add fans based on public perception and existing fanbase
-            double sentimentPercent = AffinityAsPercent(ThisRound.PublicSentiment);
+            double sentimentPercent = 0.05 * AffinityAsPercent(ThisRound.PublicSentiment);
             AddFans(sentimentPercent, sentimentPercent + 0.02, ref ThisRound.FanCount);
         }
 
         public void CompleteRound()
         {
-
+            Values = (PlayerValues)ThisRound.Clone();
         }
 
 
@@ -210,7 +210,7 @@ namespace LD40_sgstair
                 GameAction a = EngineData.Actions[i];
                 if(a.CanUseAction(this,a))
                 {
-                    actions.Add(new RoundAction(a, i));
+                    actions.Add(new RoundAction(this, a, i));
                 }
             }
             return actions;
@@ -290,15 +290,27 @@ namespace LD40_sgstair
 
     class RoundAction
     {
-        public RoundAction(GameAction a, int index)
+        public RoundAction(GamePlayer p, GameAction a, int index)
         {
             Action = a;
             ActionIndex = index;
+            if (a.CostString != null) CostString = a.CostString(p, a);
+            if (a.RiskString != null) RiskString = a.RiskString(p, a);
+            if (a.BenefitString != null) BenefitString = a.BenefitString(p, a);
+        }
+
+        public RoundAction(string Name, string Description, string Cost)
+        {
+            // Not actually an action related to the game, but this action is used as a helper in the UI.
+            Action = new GameAction() { Title = Name, Description = Description };
+            ActionIndex = -1;
+            CostString = Cost;
         }
 
         public GameAction Action;
         public int ActionIndex;
 
+        public string CostString, RiskString, BenefitString;
     }
 
     // Deal with media stuff after getting core game loop working.

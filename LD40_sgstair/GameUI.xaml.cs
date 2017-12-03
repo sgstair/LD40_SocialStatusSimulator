@@ -27,6 +27,8 @@ namespace LD40_sgstair
 
         Engine GameEngine;
         GamePlayer HumanPlayer;
+        RoundAction EndRoundAction = new RoundAction("End Round", "Relax for the rest of this quarter and advance to the next one.", "Cost: ");
+
 
         public void StartNewGame()
         {
@@ -52,8 +54,47 @@ namespace LD40_sgstair
         }
         void RebuildActionItems()
         {
+            ActionScroll.Children.Clear();
+            List<RoundAction> actions = HumanPlayer.PossibleActions();
+            ActionItemControl c;
 
+            foreach (RoundAction action in actions)
+            {
+                c = new ActionItemControl();
+                c.BindAction(action);
+                c.ActionClicked += ActionClicked;
+                ActionScroll.Children.Add(c);
+            }
+
+            // Add a special action at the end of the list to end the quarter and advance the game.
+            c = new ActionItemControl();
+            EndRoundAction.CostString = GameFormat.FormatTime(HumanPlayer.ThisRound.TimeRemaining);
+            c.BindAction(EndRoundAction);
+            c.ActionClicked += ActionClicked;
+            ActionScroll.Children.Add(c);
         }
+
+
+        private void ActionClicked(RoundAction obj)
+        {
+            if (obj == EndRoundAction)
+            {
+                // Start the next round
+                GameEngine.CompleteRound();
+                GameEngine.BeginRound();
+                UpdateUIForQuarter();
+
+
+            }
+            else
+            {
+                // Commit the action, and rebuild the UI to reflect the changes.
+                HumanPlayer.CommitAction(obj);
+                RebuildStatus();
+                RebuildActionItems();
+            }
+        }
+
         void RebuildStatus()
         {
             // Top status area
@@ -75,6 +116,19 @@ namespace LD40_sgstair
 
             // Side panel status
             LabelTimeRemaining.Content = string.Format("Time Remaining ({0})", GameFormat.FormatTime(HumanPlayer.ThisRound.TimeRemaining));
+
+            double sentimentPercent = HumanPlayer.AffinityAsPercent(HumanPlayer.ThisRound.PublicSentiment);
+            LabelPublicSentiment.Content = string.Format("Public Sentiment ({0})", GameFormat.FormatPercent(sentimentPercent));
+
+            double affinityProfessional = HumanPlayer.AffinityAsPercent(HumanPlayer.ThisRound.AffinityProfessional);
+            LabelProfessionalAffinity.Content = string.Format("Professional Affinity ({0})", GameFormat.FormatPercent(affinityProfessional));
+            double affinityMedia = HumanPlayer.AffinityAsPercent(HumanPlayer.ThisRound.AffinityMedia);
+            LabelMediaAffinity.Content = string.Format("Media Affinity ({0})", GameFormat.FormatPercent(affinityMedia));
+            double affinitySocial = HumanPlayer.AffinityAsPercent(HumanPlayer.ThisRound.AffinitySocial);
+            LabelSocialAffinity.Content = string.Format("Social Affinity ({0})", GameFormat.FormatPercent(affinitySocial));
+            double affinityCriminal = HumanPlayer.AffinityAsPercent(HumanPlayer.ThisRound.AffinityCriminal);
+            LabelCriminalAffinity.Content = string.Format("Criminal Affinity ({0})", GameFormat.FormatPercent(affinityCriminal));
+
         }
     }
 }
