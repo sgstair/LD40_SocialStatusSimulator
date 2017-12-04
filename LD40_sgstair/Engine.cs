@@ -243,6 +243,7 @@ namespace LD40_sgstair
     class PartialProject
     {
         public GameAction Project;
+        public MediaEvent Media;
         public int QuartersRemaining;
         public bool JailTime;
     }
@@ -285,6 +286,7 @@ namespace LD40_sgstair
         public PlayerValues LastRound;
 
         public List<PartialProject> PartialProjects = new List<PartialProject>();
+        public List<MediaEvent> OldNews = new List<MediaEvent>();
 
         public GamePlayer(Engine parentEngine, string playerName, bool playerHuman = false)
         {
@@ -384,12 +386,21 @@ namespace LD40_sgstair
                     }
                     else
                     {
-                        p.Project.FinalCompletion(this, p.Project, null);
+                        p.Project.FinalCompletion(this, p.Project, p.Media);
                     }
                 }
             }
             PartialProjects.RemoveAll((p) => p.QuartersRemaining == 0);
 
+            // Keep track of old news for human players
+            if(Human)
+            {
+                OldNews.InsertRange(0,GetPlayerNews());
+                if(OldNews.Count > 50)
+                {
+                    OldNews.RemoveRange(50, OldNews.Count - 50);
+                }
+            }
         }
 
 
@@ -454,14 +465,28 @@ namespace LD40_sgstair
             return actions;
         }
 
+        RoundAction CurrentRoundAction;
+
+        public void SetResult(string result, bool positive)
+        {
+            CurrentRoundAction.ResultString = result;
+            CurrentRoundAction.ResultPositive = positive;
+        }
+
         public void CommitAction(RoundAction a)
         {
             if (InJail || Dead) return;
 
+            CurrentRoundAction = a;
             a.Action.CommitAction(this, a.Action, a.Media);
+            if(a.Media != null)
+            {
+                a.Media.Reacted = true;
+            }
+
             if (a.Action.NumQuarters > 1)
             {
-                PartialProject p = new PartialProject() { Project = a.Action, QuartersRemaining = a.Action.NumQuarters };
+                PartialProject p = new PartialProject() { Project = a.Action, QuartersRemaining = a.Action.NumQuarters, Media = a.Media };
                 PartialProjects.Add(p);
             }
         }
@@ -469,7 +494,18 @@ namespace LD40_sgstair
         public List<RoundAction> MediaActions(MediaEvent e, int mediaIndex)
         {
             List<RoundAction> actions = new List<RoundAction>();
-            if (Dead) return actions;
+            if (Dead || InJail) return actions;
+            if (!e.Important || e.Reacted) return actions;
+
+            // Find what media actions can be applied to this event.
+            for (int i = 0; i < EngineData.MediaActions.Length; i++)
+            {
+                GameAction a = EngineData.MediaActions[i];
+                if (a.CanUseAction(this, a, e))
+                {
+                    actions.Add(new RoundAction(this, a, i, mediaIndex) { Media = e });
+                }
+            }
 
             return actions;
         }
@@ -499,10 +535,23 @@ namespace LD40_sgstair
 
                 // Enumerate actions
                 List<RoundAction> actions = PossibleActions();
+
+                // Also get actions from media items
+                List<MediaEvent> media = GetPlayerNews();
+                int index = 0;
+                foreach(MediaEvent e in media)
+                {
+                    if(e.Important)
+                    {
+                        List<RoundAction> mediaActions = MediaActions(e, index);
+                        actions.AddRange(mediaActions);
+                    }
+                    index++;
+                }
                 if (actions.Count == 0) return;
 
                 // Pick one
-                int index = Parent.RandomNext(0, actions.Count);
+                index = Parent.RandomNext(0, actions.Count);
                 CommitAction(actions[index]);
             }
         }
@@ -520,7 +569,7 @@ namespace LD40_sgstair
             string formattedReason = string.Format(newsConcentrate, this.Name);
             string[] parts = formattedReason.Split('\n');
             if (parts.Length < 2) parts = new string[] { formattedReason, "Ha, the editor is on vacation and I can say whatever I want" };
-            QueueNews(parts[0], parts[1], outcome, highlight);
+            QueueNews(parts[0], parts[1], outcome, highlight, eventType);
         }
 
         /// <summary>
@@ -532,7 +581,11 @@ namespace LD40_sgstair
             QueueNews(Reason);
         }
 
-
+        public void AddVanityHeadline(params string[] Reasons)
+        {
+            string Reason = Reasons[Parent.RandomNext(0, Reasons.Length)];
+            QueueNews(Reason, null, true, MediaEventType.Vanity);
+        }
 
         public List<MediaEvent> GetPlayerNews()
         {
@@ -563,6 +616,7 @@ namespace LD40_sgstair
             FineCount++;
             FineTotal += fineAmount;
 
+            SetResult("Failed: " + outcome, false);
             QueueNews(fineReason, outcome, true, MediaEventType.Criminal);
         }
 
@@ -588,6 +642,8 @@ namespace LD40_sgstair
 
             InJail = true;
             JailCount++;
+
+            SetResult("Failed: The police threw you in jail.", false);
 
             PartialProjects.Add(p);
 
@@ -691,6 +747,8 @@ namespace LD40_sgstair
 
                 // Add "Mysterious death" news
                 QueueNews($"Mysterious death of {specificTarget.Name}\nAuthorities say there are no signs of foul play, for this unusual death");
+
+                SetResult($"Operation was successful, {specificTarget.Name} is no more.", true);
             }
             else
             {
@@ -725,36 +783,55 @@ namespace LD40_sgstair
                 "Does {0} have cancer, and are they hiding it?\nWeb denizen diagnoses {0}, claiming he can tell by \"the pixels\""
             };
             string outcomeString;
+            string myoutcome = "";
 
-            if(outcome < risk)
+            if (specificTarget == null)
+            {
+                // Pick a random target with higher rank, or in the top 50 if we are #1
+                specificTarget = SelectRandomTarget();
+            }
+
+            if (outcome < risk)
             {
                 // Caught! Target will know it was you trying to smear them.
                 Instigator = this;
                 outcomeString = "We found out who was behind these false allegations...";
+                myoutcome = "Details of your involvement got out, there may be retaliation...";
                 FailedSmearCampaigns++;
+                SetResult($"Oh no! {specificTarget.Name} found out we were behind the smear campaign!", false);
             }
             else
             {
                 // Not caught
                 outcomeString = "The motive for this smear campaign is unknown";
+                myoutcome = "The campaign was successful!";
                 SmearCampaigns++;
+                SetResult($"Success! {specificTarget.Name}'s good name has been rubbed in the dirt.", true);
             }
 
-            if(specificTarget == null)
-            {
-                // Pick a random target with higher rank, or in the top 50 if we are #1
-                specificTarget = SelectRandomTarget();
-            }
 
             string smear = Smears[Parent.RandomNext(0, Smears.Length)];
             string formattedReason = string.Format(smear, this.Name);
             string[] parts = formattedReason.Split('\n');
             if (parts.Length < 2) parts = new string[] { formattedReason, "Ha, the editor is on vacation and I can say whatever I want" };
 
+            specificTarget.MediaAffectPopularity(-effectiveness, 0.1);
+
             MediaEvent me = new MediaEvent(specificTarget, parts[0], parts[1], outcomeString, true);
             me.InstigatingPlayer = Instigator;
             me.EventType = MediaEventType.Smear;
             Parent.NextRoundNews.Add(me);
+
+            // Also queue the smear to this player's feed, for reference.
+            me = new MediaEvent(this, parts[0], parts[1], myoutcome, false);
+            Parent.NextRoundNews.Add(me);
+
+        }
+
+
+        public void MediaAffectPopularity(double effect, double variability)
+        {
+            ImproveSentiment(-effect - variability, -effect + variability, ref ThisRound.PublicSentiment);
         }
 
 
@@ -770,6 +847,9 @@ namespace LD40_sgstair
         }
         public void ImproveAffinity(double minPercent, double maxPercent, ref int affinity)
         {
+            if (minPercent < -.8) minPercent = -.8;
+            if (maxPercent > .8) maxPercent = .8;
+
             double start = AffinityAsPercent(affinity);
             double percent = Parent.NextPercent(minPercent, maxPercent);
             double remain = 1 - start;
@@ -806,10 +886,11 @@ namespace LD40_sgstair
 
     class RoundAction
     {
-        public RoundAction(GamePlayer p, GameAction a, int index)
+        public RoundAction(GamePlayer p, GameAction a, int index, int mediaIndex = -1)
         {
             Action = a;
             ActionIndex = index;
+            ActionMediaIndex = mediaIndex;
             if (a.CostString != null) CostString = a.CostString(p, a);
             if (a.RiskString != null) RiskString = a.RiskString(p, a);
             if (a.BenefitString != null) BenefitString = a.BenefitString(p, a);
@@ -829,6 +910,9 @@ namespace LD40_sgstair
         public int ActionMediaIndex = -1; // Only set for media actions.
 
         public string CostString, RiskString, BenefitString;
+
+        public string ResultString;
+        public bool ResultPositive;
     }
 
     // Deal with media stuff after getting core game loop working.
@@ -851,7 +935,7 @@ namespace LD40_sgstair
         public GamePlayer InstigatingPlayer; // If a media risk is failed, the instigating player will be known. todo: figure out how to manage retalitation actions.
 
         public bool Important;
-        public bool CanRespond; // If this or InstigatingPlayer is set, options exist to respond to the news story.
+        public bool Reacted;
 
         public MediaEventType EventType;
     }

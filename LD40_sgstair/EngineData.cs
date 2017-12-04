@@ -39,7 +39,9 @@ namespace LD40_sgstair
                 {
                     Player.ImproveSentiment(0, 0.05, ref Player.ThisRound.PublicSentiment);
                     Player.AddFans(0.04, 0.13, ref Player.ThisRound.FanCount);
-                    //Todo: headlines
+                    Player.AddFlavorHeadline(
+                        "Another releas by {0} hits the shelves\nThis project has been in progress for quite some time, we can't wait to see how it holds up"
+                       );
                 }
             },
             new GameAction {
@@ -55,7 +57,9 @@ namespace LD40_sgstair
                 {
                     Player.ImproveSentiment(0, 0.05, ref Player.ThisRound.PublicSentiment);
                     Player.AddFans(0.06, 0.18, ref Player.ThisRound.FanCount);
-                    //Todo: headlines
+                    Player.AddFlavorHeadline(
+                        "Another release by {0} hits the shelves\nWe're hearing good things about this one"
+                       );
                 }
             },
 
@@ -71,7 +75,9 @@ namespace LD40_sgstair
                 {
                     Player.ImproveSentiment(0, 0.05, ref Player.ThisRound.PublicSentiment);
                     Player.AddFans(0.03, 0.36, ref Player.ThisRound.FanCount);
-                    //Todo: headlines
+                    Player.AddFlavorHeadline(
+                        "{0} has been working on this for over a year\nExcited fans have flooded local retailers to see {0}'s materpiece"
+                       );
                 }
             },
 
@@ -88,7 +94,10 @@ namespace LD40_sgstair
                 {
                     Player.ImproveSentiment(0, 0.05, ref Player.ThisRound.PublicSentiment);
                     Player.AddFans(0.29, 0.45, ref Player.ThisRound.FanCount);
-                    //Todo: headlines
+                    Player.AddFlavorHeadline(
+                        "The new blockbuster of our era\nRave reviews for {0}'s latest release"
+                       );
+
                 }
             },
 
@@ -105,7 +114,9 @@ namespace LD40_sgstair
                 {
                     Player.ImproveSentiment(0, 0.05, ref Player.ThisRound.PublicSentiment);
                     Player.AddFans(0.39, 0.65, ref Player.ThisRound.FanCount);
-                    //Todo: headlines
+                    Player.AddFlavorHeadline(
+                        "Crowds seeking {0}'s release continue\nWeeks after the release, fans are still trying to get their hands on a copy"
+                       );
                 }
             },
 
@@ -154,6 +165,7 @@ namespace LD40_sgstair
 
                     Player.ImproveAffinity(0.005, 0.001, ref Player.ThisRound.AffinityMedia);
                     Player.SmearCampaign(0.08, 0.03);
+                    // Smear campaign has its own media interactions
                 }
             },
 
@@ -182,7 +194,7 @@ namespace LD40_sgstair
                 CommitAction = (Player, Action, Media) =>
                 {
                     GameAction.DeductCost(Player, Action, Media);
-                    Player.ImproveAffinity(0.012, 0.35, ref Player.ThisRound.AffinityProfessional);
+                    Player.ImproveAffinity(0.12, 0.35, ref Player.ThisRound.AffinityProfessional);
                     Player.AddFlavorHeadline(
                         "Wildly successful professional conference attracts experts\n{0}, who organized the event, said the outcome was better than expected",
                         "New workshop for experts turning heads\nThis fantastic opportunity was organized by {0}, who has been incredibly active in the space...");
@@ -208,7 +220,10 @@ namespace LD40_sgstair
                 {
                     GameAction.DeductCost(Player, Action, Media);
                     Player.ImproveAffinity(0.13, 0.36, ref Player.ThisRound.AffinityMedia);
-                    //Todo: add headlines - this is really a polish work item.
+                    Player.AddFlavorHeadline(
+                        "Media industry event attracts pros from near and far\nParticipants from the other side of the continent declare it a smashing success"
+
+                        );
                 }
             },
             new GameAction
@@ -230,7 +245,10 @@ namespace LD40_sgstair
                 CommitAction = (Player, Action, Media) =>
                 {
                     GameAction.DeductCost(Player, Action, Media);
-                    Player.ImproveAffinity(0.012, 0.035, ref Player.ThisRound.AffinitySocial);
+                    Player.ImproveAffinity(0.12, 0.35, ref Player.ThisRound.AffinitySocial);
+                    Player.AddFlavorHeadline(
+                        "House party organized by {0} attracts crowd\nPatrons have nothing but good things to say"
+                        );
                 }
             },
             new GameAction
@@ -250,6 +268,7 @@ namespace LD40_sgstair
                     if(GameAction.DidEvadeCriminalRisk(Player, Action))
                     {
                         Player.ImproveAffinity(0.005, 0.02, ref Player.ThisRound.AffinityCriminal);
+                        Player.SetResult("Success: Criminal standing improved", true);
                     }
                 }
             },
@@ -269,6 +288,7 @@ namespace LD40_sgstair
                     if(GameAction.DidEvadeCriminalRisk(Player, Action))
                     {
                         Player.ImproveAffinity(0.12, 0.25, ref Player.ThisRound.AffinityCriminal);
+                        Player.SetResult("Success: The boss accepts your generous gift", true);
                     }
                 }
             },
@@ -284,8 +304,13 @@ namespace LD40_sgstair
                 CommitAction = (Player, Action, Media) =>
                 {
                     GameAction.DeductCost(Player, Action, Media);
-                    Player.ImproveAffinity(0.005, 0.02, ref Player.ThisRound.AffinityProfessional);
-                    // No news from these minor events
+                    Player.ImproveAffinity(0.005, 0.02, ref Player.ThisRound.AffinityMedia);
+
+                    Player.AddVanityHeadline(
+                        "World Record attempt by {0}\n{0} failed miserably today to set the world record for number of consecutive backflips",
+                        "{0} takes us skydiving\nThe record for this year's most ridiculous publicity stunt goes to {0}",
+                        "{0} gives lecture on popsicles\nOnly 7 people showed up for {0}'s hour long lecture on frozen treats"
+                        );
                 }
             },
 
@@ -295,7 +320,7 @@ namespace LD40_sgstair
             {
                 Title = "File for Bankruptcy", Description = "Lose the crippling debt, but also most of your connections and fans",
                 MoneyCost = 0, TimeCost = 80,
-                CanUseAction = (Player, Action, Media) => Player.ThisRound.Money < 0,
+                CanUseAction = (Player, Action, Media) => Player.ThisRound.Money < 0 && Player.ThisRound.TimeRemaining >= Action.TimeCost,
                 CommitAction = (Player, Action, Media) =>
                 {
                     GameAction.DeductCost(Player, Action, Media);
@@ -309,6 +334,10 @@ namespace LD40_sgstair
                     Player.ThisRound.AffinitySocial /= 5;
                     Player.ThisRound.AffinityMedia /= 5;
                     Player.ThisRound.AffinityProfessional /= 5;
+
+                    Player.AddFlavorHeadline(
+                        "{0} unexpectedly filed for bankruptcy protection today\nThe lavish lifestyle was hiding a now apparent lack of liquidity"
+                        );
                 }
             },
 
@@ -334,6 +363,7 @@ namespace LD40_sgstair
                         Player.ThisRound.Money += 5000000;
                         Player.ImproveAffinity(0.005, 0.05, ref Player.ThisRound.AffinityCriminal);
                         Player.ImproveAffinity(0.005, 0.03, ref Player.ThisRound.AffinitySocial);
+                        Player.SetResult("Success: This party sure is lively", true);
                     }
                 }
             },
@@ -349,14 +379,200 @@ namespace LD40_sgstair
                     GameAction.DeductCost(Player, Action, Media);
 
                     Player.AttemptAssasination(Action.RiskPercent);
+                    // This path has its own news generation
                 }
             },
+
+
+#if false
+        //////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Some test actions for making sure the game works correctly.
+
+            new GameAction {
+                Title = "Go Directly to Jail", Description = "Do not pass go, Do not collect $200",
+                MoneyCost = 0, TimeCost = 0,
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+                    Player.GoToJail(4);
+                }
+            },
+
+
+            new GameAction {
+                Title = "Fine, Fine", Description = "I'll give you a fine.",
+                MoneyCost = 0, TimeCost = 0,
+                CostString = (Player, Action) => "$100M Fine, whether you have it or not",
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+                    Player.ApplyFine(100000000,"Bewildered police officer gives record fine\n{0} asked to be fined, we still don't unserstand why. Their publicist has not returned our calls.");
+                }
+            },
+
+            new GameAction {
+                Title = "Gambling addiction", Description = "Lose a bunch of money, for no good reason.",
+                MoneyCost = 0, TimeCost = 0,
+                CostString = (Player, Action) => "$100M, whether you have it or not",
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+                    Player.ThisRound.Money -= 100000000;
+                }
+            },
+
+            new GameAction {
+                Title = "Status test", Description = "Post a status",
+                MoneyCost = 0, TimeCost = 0,
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+                    Player.SetResult("Here is a result!", true);
+                }
+            },
+
+#endif
+
 
         };
 
         public static GameAction[] MediaActions = new GameAction[]
         {
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Respond to media contact
+            new GameAction
+            {
+                Title = "Respond in a Dignified fashion", Description = "Do some research and consultation to make a good impression",
+                MoneyCost = 50000, TimeCost = 25, 
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) &&
+                    GameAction.RequireAffinityMedia(Player, 0.20) && GameAction.RequireAffinitySocial(Player, 0.20) &&
+                    (Media.EventType == MediaEventType.Smear || Media.EventType == MediaEventType.Vanity),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
 
+                    Player.MediaAffectPopularity(0.15, 0.15);
+                }
+            },
+
+            new GameAction
+            {
+                Title = "Engage with the media, and be yourself", Description = "Is casual you a good fit for your audience? At least there isn't much preparation",
+                MoneyCost = 5000, TimeCost = 3,
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) &&
+                    (Media.EventType == MediaEventType.Smear || Media.EventType == MediaEventType.Vanity),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+
+                    Player.MediaAffectPopularity(0.1, 0.15);
+                }
+            },
+
+            new GameAction
+            {
+                Title = "React controversially to the media", Description = "Nobody can guess how this is going to end...",
+                MoneyCost = 80000, TimeCost = 15,
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) &&
+                    GameAction.RequireAffinityMedia(Player, 0.10) && GameAction.RequireAffinitySocial(Player, 0.10) &&
+                    (Media.EventType == MediaEventType.Smear || Media.EventType == MediaEventType.Vanity),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+
+                    Player.MediaAffectPopularity(0.03, 0.45);
+                }
+            },
+
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Respond to criminal reporting
+
+            new GameAction
+            {
+                Title = "Respond in a Dignified fashion", Description = "Explain your case and try to get people on your side",
+                MoneyCost = 50000, TimeCost = 25,
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) &&
+                    GameAction.RequireAffinityMedia(Player, 0.20) && GameAction.RequireAffinitySocial(Player, 0.20) &&
+                    (Media.EventType == MediaEventType.Criminal),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+
+                    Player.MediaAffectPopularity(0.05, 0.10);
+                }
+            },
+
+            new GameAction
+            {
+                Title = "React controversially to the media", Description = "Yeah man! Those automatic weapons should totally be legal!",
+                MoneyCost = 80000, TimeCost = 15,
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) &&
+                    GameAction.RequireAffinityMedia(Player, 0.10) && GameAction.RequireAffinitySocial(Player, 0.10) &&
+                    (Media.EventType == MediaEventType.Criminal),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+
+                    Player.MediaAffectPopularity(-.1, 0.5);
+                }
+            },
+
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Respond to failed assassination attempts
+
+
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Option to sue the origin of assasination / smear campaign plots
+
+
+            new GameAction
+            {
+                Title = "Sue the originator", Description = "We have a rock solid case to extract some added benefits from this plot.",
+                MoneyCost = 200000, TimeCost = 15, NumQuarters = 3,
+                BenefitString = (Player, Action) => "$50M on completion of the lawsuit",
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) &&
+                    GameAction.RequireAffinitySocial(Player, 0.10) &&
+                    (Media.EventType == MediaEventType.Victim && Media.InstigatingPlayer != null),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+                },
+                FinalCompletion = (Player, Action, Media) =>
+                {
+                    long settlementamount = 50000000;
+                    Media.InstigatingPlayer.ThisRound.Money -= settlementamount;
+                    Player.ThisRound.Money += settlementamount;
+                    
+                    // Add headlines to both parties to indicate what's going on.
+                    string mediaText = $"{Player.Name}'s lawsuit against {Media.InstigatingPlayer.Name} concludes\nDefendant to pay $50M in damages for the attempt on {Player.Name}'s life";
+                    Player.QueueNews(mediaText);
+                    Media.InstigatingPlayer.QueueNews(mediaText, highlight:true);
+                }
+            },
+            new GameAction
+            {
+                Title = "Sue the originator", Description = "We have a rock solid case to extract some added benefits from this plot.",
+                MoneyCost = 100000, TimeCost = 10, NumQuarters = 2,
+                BenefitString = (Player, Action) => "$5M on completion of the lawsuit",
+                CanUseAction = (Player, Action, Media) => GameAction.CanUseBase(Player, Action, Media) &&
+                    GameAction.RequireAffinitySocial(Player, 0.10) &&
+                    (Media.EventType == MediaEventType.Smear && Media.InstigatingPlayer != null),
+                CommitAction = (Player, Action, Media) =>
+                {
+                    GameAction.DeductCost(Player, Action, Media);
+                },
+                FinalCompletion = (Player, Action, Media) =>
+                {
+                    long settlementamount = 5000000;
+                    Media.InstigatingPlayer.ThisRound.Money -= settlementamount;
+                    Player.ThisRound.Money += settlementamount;
+
+                    // Add headlines to both parties to indicate what's going on.
+                    string mediaText = $"{Player.Name}'s lawsuit against {Media.InstigatingPlayer.Name} concludes\nDefendant settled to pay $5M for defamantion";
+                    Player.QueueNews(mediaText);
+                    Media.InstigatingPlayer.QueueNews(mediaText, highlight:true);
+                }
+            },
         };
 
     }

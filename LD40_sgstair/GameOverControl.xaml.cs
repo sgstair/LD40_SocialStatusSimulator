@@ -48,7 +48,9 @@ namespace LD40_sgstair
             else if(p.Retired)
             {
                 LabelHeading.Content = "Game Over";
-                StackDetails.Children.Add(new Label() { Content = $"{p.Name} Retired from the industry at the age of {Math.Floor(p.Age)}" });
+                string location = "from the industry";
+                if (p.InJail) location = "in a jail cell";
+                StackDetails.Children.Add(new Label() { Content = $"{p.Name} Retired {location} at the age of {Math.Floor(p.Age)}" });
             }
 
             StackDetails.Children.Add(new Label() { Content = $"Final Money: {GameFormat.FormatMoney(p.Values.Money)}" });
@@ -61,7 +63,7 @@ namespace LD40_sgstair
             if(p.FineCount > 0)
             {
                 string s = p.FineCount == 1 ? "" : "s";
-                StackDetails.Children.Add(new Label() { Content = $"Fined {p.FineCount} time{s} for a total of {GameFormat.FormatFans(p.FineTotal)}" });
+                StackDetails.Children.Add(new Label() { Content = $"Fined {p.FineCount} time{s} for a total of {GameFormat.FormatMoney(p.FineTotal)}" });
             }
             
             if(p.JailCount > 0)
